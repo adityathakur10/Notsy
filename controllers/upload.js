@@ -1,6 +1,9 @@
 const scrapeTranscript = require('./scrapeTranscript');
-const openai = require('./openAiClient');
+const pdfParser=require('pdf-parse')
+const fs=require('fs')
+const path=require('path')
 
+const openai = require('./openAiClient');
 const Transcript=require('../models/transcript')
 const ChatSession=require('../models/ChatSession')
 
@@ -11,7 +14,7 @@ const home=(req,res)=>{
 const uploadURL = async (req, res) => {
     const url = String(req.body.url);
     const topic = req.body.topic;
-    const userId = req.user.userId;  // Assuming userId is fetched from JWT token
+    const userId = req.user.userId;  
     const video_id = new URL(url).searchParams.get('v');
     
     if (!video_id) {
@@ -27,7 +30,7 @@ const uploadURL = async (req, res) => {
             return res.status(200).json({ message: 'Transcript already exists', data: existingTranscript });
         }
 
-        // Scrape the transcript using Puppeteer
+        //scraping
         console.log('Scraping the transcript...');
         const transcript = await scrapeTranscript(url);
         
@@ -95,6 +98,66 @@ const uploadURL = async (req, res) => {
         res.status(400).send('Invalid URL provided.');
     }
 };
+const uploadPDF=async(req,res)=>{
+    if(!req.file){
+        return res.status(500).json({message:"file not uploaded"})
+    }
+    const userId=req.user.userId;
+    const topic=req.body.topic;
+    const pdfBuffer=req.file.buffer;
+
+    // const transcript=await pdfParser(req.file.buffer)
+    try {
+        //parsing the pdf
+        const data=await pdfParser(pdfBuffer);
+        const transcript=data.text;
+
+        //save pdf locally 
+        const pdfPath=path.join(__dirname,'..','uploads',`${req.file.originalname}_${Date.now()}`);
+        fs.writeFileSync(pdfPath,pdfBuffer);
+
+        const newTranscript=new Transcript({
+            videoID:pdfPath,
+            transcript,
+            topic,
+            user:userId
+        });
+        await newTranscript.save();
+        console.log("Transcript saved successfully");
+        
+        const initialChat=await openai.chat.completions.create({
+            model:"gpt-3.5-turbo",
+            messages:[
+                {
+                    role:"system",
+                    content:`this is the trancsript context : ${transcript}. give me a summary of the content in the transcript . `
+                },
+            ],
+        });
+        console.log(initialChat.choices[0].message);
+
+        const newSession=new ChatSession({
+            user:userId,
+            transcriptID:newTranscript._id,
+            messages:[
+                {role:'system',
+                    content:`this is the transcript context :\n\n${transcript}`
+                },
+                {
+                    role:'assistant',
+                    content:initialChat.choices[0].message.content
+                }
+            ]
+        })
+
+        await newSession.save();
+
+        res.status(201).json({message:"transcript and intital chat context savedd successfully",data:newSession})
+        // res.send('he;llooo')
+    } catch (error) {
+        console.log('Error :',error.message);
+        res.status(400).json({message:"an error occures while processing the pdf"})}
+}
 
 
-module.exports={home,uploadURL}
+module.exports={home,uploadURL,uploadPDF}
