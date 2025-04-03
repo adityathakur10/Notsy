@@ -66,7 +66,7 @@ const LoginForm = () => {
 
     try {
       setLoading(true);
-      const response = await axios.post("/auth/login", formData);
+      const response = await axios.post("http://localhost:3000/notsy/auth/login", formData);
 
       // Add submission animation
       toast.promise(

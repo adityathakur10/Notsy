@@ -81,7 +81,7 @@ const RegisterForm = () => {
     try {
       setLoading(true)
       const { confirmPassword, ...registerData } = formData
-      const response = await axios.post('/auth/register', registerData)
+      const response = await axios.post('http://localhost:3000/notsy/auth/register', registerData)
 
       toast.promise(
         new Promise((resolve) => setTimeout(resolve, 1000)), // Simulate delay
