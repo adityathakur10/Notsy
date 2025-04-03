@@ -1,39 +1,65 @@
 const User=require('../models/user')
 const {StatusCodes}=require('http-status-codes')
-const {BadRequestError,UnauthenticatedError }=require('../errors/index')
+const {BadRequestError,NotFoundError,UnauthenticatedError,CustomAPIError }=require('../errors/index')
 
 
-const register=async(req,res)=>{
-    
+const register = async (req, res) => {
     try {
-        const user=await User.create({...req.body})
-        const token=user.createJWT()
+        const { name, email, password } = req.body;
+        if (!name || !email || !password) {
+            throw new BadRequestError('Please provide all required fields');
+        }
 
-        res.status(StatusCodes.CREATED).json({user:{name:user.name},token})
+        const existingUser = await User.findOne({ email });
+        if (existingUser) {
+            throw new BadRequestError('Email already exists');
+        }
 
+        // Create new user
+        const user = await User.create({ ...req.body });
+        const token = user.createJWT();
+
+        res.status(StatusCodes.CREATED).json({ user: { name: user.name }, token });
     } catch (error) {
-        if(error.code===11000)
-            return res.status(400).json({ error: 'Email already exists' });
+        if (error instanceof CustomAPIError) {
+            return res.status(error.statusCode).json({ msg: error.message });
+        }
+        // For unexpected errors
+        console.error(error);
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ msg: 'Something went wrong, please try again' });
     }
-    
+};
+
+
+const login = async(req, res) => {
+    try {
+        const {email, password} = req.body
+        if(!email || !password) {
+            throw new BadRequestError('please provide email and password')
+        }
+        
+        const user = await User.findOne({email})
+        if(!user) {
+            throw new NotFoundError('User not found')
+        }
+        
+        const passwordCheck = await user.comparePassword(password)
+        if(!passwordCheck) {
+            throw new UnauthenticatedError('Invalid password')
+        }
+
+        const token = user.createJWT()
+        res.status(StatusCodes.OK).json({user:{name:user.name}, token})
+    } catch (error) {
+        // custom error
+        if (error instanceof CustomAPIError) {
+            return res.status(error.statusCode).json({ msg: error.message });
+        }
+        // unexpected errors
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({ msg: 'Something went wrong' });
+    }
 }
 
-const login=async(req,res)=>{
-    const {email,password}=req.body
-    if(!email || !password){
-        throw new BadRequestError('please provide email and password')
-    }
-    const user=await User.findOne({email})
-    const passwordCheck=await user.comparePassword(password)
-    if(!user || !passwordCheck){
-        throw new UnauthenticatedError('invalid credentials')
-    }
-
-    const token=user.createJWT()
-    res.status(StatusCodes.OK).json({user:{name:user.name},token})
-
-    // res.send('lolgin')
-}
 
 
 

@@ -1,19 +1,19 @@
-const scrapeTranscript = require('./scrapeTranscript');
-const pdfParser=require('pdf-parse')
-const fs=require('fs')
-const path=require('path')
+const scrapeTranscript = require('../services/scrapeTranscript');
+const pdfParser = require('pdf-parse');
+const fs = require('fs');
+const path = require('path');
 
-const openai = require('./openAiClient');
-const Transcript=require('../models/transcript')
-const ChatSession=require('../models/ChatSession')
+const openai = require('../config/openAiClient');
+const Resource = require('../models/topic/resources');  
+const Chat = require('../models/topic/chat');
 
+const home = (req, res) => {
+    res.send('home route');
+};
 
-const home=(req,res)=>{
-    res.send('home route')
-}
 const uploadURL = async (req, res) => {
     const url = String(req.body.url);
-    const topic = req.body.topic;
+    const topicId = req.body.topic;
     const userId = req.user.userId;  
     const video_id = new URL(url).searchParams.get('v');
     
@@ -22,142 +22,134 @@ const uploadURL = async (req, res) => {
     }
 
     try {
-        // Check for existing transcript for the specific video and user
-        const existingTranscript = await Transcript.findOne({ videoID: video_id, user: userId });
+        const existingResource = await Resource.findOne({ source: url, userId });
         
-        if (existingTranscript) {
-            // If the transcript exists, return it without scraping again
-            return res.status(200).json({ message: 'Transcript already exists', data: existingTranscript });
+        if (existingResource) {
+            return res.status(200).json({ message: 'Resource already exists', data: existingResource });
         }
 
-        //scraping
         console.log('Scraping the transcript...');
         const transcript = await scrapeTranscript(url);
-        
         if (!transcript) {
             return res.status(404).send('Transcript not available for this video');
-        } 
+        }
         console.log('Transcript found');
 
-        // Save the transcript with a unique combination of videoID and user
-        const newTranscript = new Transcript({
-            videoID: video_id,
-            transcript,
-            topic,
-            user: userId
+        const newResource = new Resource({
+            title: `Video Transcript for ${video_id}`,
+            type: 'youtube',
+            source: url,
+            content: transcript,
+            topicId,
+            userId,
+            metadata: {}
         });
+        await newResource.save();
+        console.log('Resource saved successfully');
 
-        try {
-            await newTranscript.save(); 
-            console.log('Transcript saved successfully');
-        } catch (error) {
-            console.error('Error saving transcript:', error); 
-            // res.status(500).send('Error saving transcript.');
-        }
-        // console.log('fd')
-
-        // Create an initial chat context for the transcript
-        const initialChat = await openai.chat.completions.create({
+        const aiResponse = await openai.chat.completions.create({
             model: "gpt-3.5-turbo", 
             messages: [
-                
                 { 
                     role: "system", 
-                    content: `This is the transcript context: ${transcript}. give me a summary of the content in transcript.` },
+                    content: `This is the transcript context: ${transcript}. Give me a summary of the content in the transcript.` 
+                },
             ],
         });
-        console.log(initialChat.choices[0].message);
-        
-        // Save the initial chat session
-        const newSession = new ChatSession({
-            user: userId,
-            transcriptID: newTranscript._id,
+        console.log(aiResponse.choices[0].message);
+
+        const newChat = new Chat({
+            topicId,
+            userId,
             messages: [
                 {
                     role: 'system',
                     content: `This is the transcript context:\n\n${transcript}`
                 },
                 {
-                role: 'assistant',
-                content: initialChat.choices[0].message.content
+                    role: 'assistant',
+                    content: aiResponse.choices[0].message.content
                 }
-            ]
+            ],
+            summary: []
         });
-        
-        await newSession.save();
-        
-        res.status(201).json({ message: 'Transcript and initial chat context saved successfully', data: newSession });
-        
+        await newChat.save();
+
+        res.status(201).json({ 
+            message: 'Resource and initial chat context saved successfully', 
+            data: newChat 
+        });
     } catch (error) {
-        // 11000 - this is duplicate key error code in mongodb
         if (error.code === 11000) {  
-            return res.status(409).json({ message: 'Transcript already exists for this user and video' });
+            return res.status(409).json({ message: 'Resource already exists for this user and video' });
         }
-        
         console.error('Error: ', error.message);
         res.status(400).send('Invalid URL provided.');
     }
 };
-const uploadPDF=async(req,res)=>{
-    if(!req.file){
-        return res.status(500).json({message:"file not uploaded"})
+
+const uploadPDF = async (req, res) => {
+    if (!req.file) {
+        return res.status(500).json({ message: "File not uploaded" });
     }
-    const userId=req.user.userId;
-    const topic=req.body.topic;
-    const pdfBuffer=req.file.buffer;
+    const userId = req.user.userId;
+    const topicId = req.body.topic;
+    const pdfBuffer = req.file.buffer;
 
-    // const transcript=await pdfParser(req.file.buffer)
     try {
-        //parsing the pdf
-        const data=await pdfParser(pdfBuffer);
-        const transcript=data.text;
+        const data = await pdfParser(pdfBuffer);
+        const transcript = data.text;
 
-        //save pdf locally 
-        const pdfPath=path.join(__dirname,'..','uploads',`${req.file.originalname}_${Date.now()}`);
-        fs.writeFileSync(pdfPath,pdfBuffer);
+        const pdfPath = path.join(__dirname, '..', 'uploads', `${req.file.originalname}_${Date.now()}`);
+        fs.writeFileSync(pdfPath, pdfBuffer);
 
-        const newTranscript=new Transcript({
-            videoID:pdfPath,
-            transcript,
-            topic,
-            user:userId
+        const newResource = new Resource({
+            title: `PDF Transcript for ${req.file.originalname}`,
+            type: 'pdf',
+            source: pdfPath,
+            content: transcript,
+            topicId,
+            userId,
+            metadata: {
+                fileSize: req.file.size
+            }
         });
-        await newTranscript.save();
-        console.log("Transcript saved successfully");
-        
-        const initialChat=await openai.chat.completions.create({
-            model:"gpt-3.5-turbo",
-            messages:[
+        await newResource.save();
+        console.log("Resource saved successfully");
+
+        const aiResponse = await openai.chat.completions.create({
+            model: "gpt-3.5-turbo",
+            messages: [
                 {
-                    role:"system",
-                    content:`this is the trancsript context : ${transcript}. give me a summary of the content in the transcript . `
+                    role: "system",
+                    content: `This is the transcript context: ${transcript}. Give me a summary of the content in the transcript.`
                 },
             ],
         });
-        console.log(initialChat.choices[0].message);
+        console.log(aiResponse.choices[0].message);
 
-        const newSession=new ChatSession({
-            user:userId,
-            transcriptID:newTranscript._id,
-            messages:[
-                {role:'system',
-                    content:`this is the transcript context :\n\n${transcript}`
+        const newChat = new Chat({
+            topicId,
+            userId,
+            messages: [
+                {
+                    role: 'system',
+                    content: `This is the transcript context:\n\n${transcript}`
                 },
                 {
-                    role:'assistant',
-                    content:initialChat.choices[0].message.content
+                    role: 'assistant',
+                    content: aiResponse.choices[0].message.content
                 }
-            ]
-        })
+            ],
+            summary: [] 
+        });
+        await newChat.save();
 
-        await newSession.save();
-
-        res.status(201).json({message:"transcript and intital chat context savedd successfully",data:newSession})
-        // res.send('he;llooo')
+        res.status(201).json({ message: "Resource and initial chat context saved successfully", data: newChat });
     } catch (error) {
-        console.log('Error :',error.message);
-        res.status(400).json({message:"an error occures while processing the pdf"})}
-}
+        console.error('Error :', error.message);
+        res.status(400).json({ message: "An error occurred while processing the PDF" });
+    }
+};
 
-
-module.exports={home,uploadURL,uploadPDF}
+module.exports = { home, uploadURL, uploadPDF };

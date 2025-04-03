@@ -3,9 +3,15 @@ const app=express()
 const connectDB=require('./db/connect')
 const authenticateUser = require('./middlewares/authenticate');
 require('dotenv').config();
+const cors=require('cors')
 
 
+const corsOptions={
+    origin:'http://localhost:5173',
+    optionsSuccessStatus:200
+}
 //middlewares
+app.use(cors());
 app.use(express.json())
 
 //import routes
