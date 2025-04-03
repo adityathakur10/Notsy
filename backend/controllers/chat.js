@@ -1,5 +1,5 @@
 const ChatSession = require('../models/ChatSession');
-const openai = require('../config/openAiClient');
+const openai = require('./openAiClient');
 
 const chat = async (req, res) => {
     const { chatSessionId, message } = req.body;

@@ -21,11 +21,10 @@ const userSchema=new mongoose.Schema({
         require:[true,'please provide password'],
         minLength:6
     }
-},{timestamps:true})
+})
 
 //used to hash the password before saving
 userSchema.pre('save',async function(){
-    if(!this.modified('password'))return ;
     const salt =await bCrypt.genSalt(10);
     this.password=await bCrypt.hash(this.password,salt)
 })
