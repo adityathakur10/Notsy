@@ -1,24 +1,32 @@
 import { createContext, useContext, useState, useEffect } from 'react';
-import axios from '../utils/axios';
+import { jwtDecode } from "jwt-decode";
 
 const AuthContext = createContext(null);
 
+// Export the hook
+export const useAuth = () => {
+  const context = useContext(AuthContext);
+  if (!context) {
+    throw new Error('useAuth must be used within an AuthProvider');
+  }
+  return context;
+};
+
+// Export the provider
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [loading, setLoading] = useState(true);
 
   // Check for existing token on app load
   useEffect(() => {
-    const checkAuth = async () => {
+    const checkAuth = () => {
       const token = localStorage.getItem('token');
       if (token) {
         try {
-          // Verify token with backend
-          const response = await axios.get('/auth/verify', {
-            headers: { Authorization: `Bearer ${token}` }
-          });
-          setUser(response.data.user);
+          const decoded = jwtDecode(token);
+          setUser({ name: decoded.name });
         } catch (error) {
+          console.error('Invalid token:', error);
           localStorage.removeItem('token');
         }
       }
@@ -37,8 +45,16 @@ export const AuthProvider = ({ children }) => {
     localStorage.removeItem('token');
   };
 
+  const contextValue = {
+    user,
+    login,
+    logout,
+    loading,
+    isAuthenticated: !!user
+  };
+
   return (
-    <AuthContext.Provider value={{ user, login, logout, loading }}>
+    <AuthContext.Provider value={contextValue}>
       {!loading && children}
     </AuthContext.Provider>
   );

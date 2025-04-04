@@ -71,41 +71,54 @@ const RegisterForm = () => {
   }
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault();
 
     if (Object.keys(errors).length > 0) {
-      toast.error('Please fix all errors before submitting')
-      return
+      toast.error('Please fix all errors before submitting');
+      return;
     }
 
     try {
-      setLoading(true)
-      const { confirmPassword, ...registerData } = formData
-      const response = await axios.post('http://localhost:3000/notsy/auth/register', registerData)
+      setLoading(true);
+      const { confirmPassword, ...registerData } = formData;
 
-      toast.promise(
-        new Promise((resolve) => setTimeout(resolve, 1000)), // Simulate delay
-        {
-          loading: 'Creating account...',
-          success: 'Account created successfully!',
-          error: 'Registration failed',
-        }
-      )
+      // Log the data being sent
+      console.log('Sending registration data:', registerData);
 
-      localStorage.setItem('token', response.data.token)
-      setTimeout(() => {
-        navigate('/dashboard')
-      }, 1500) // Delay navigation to show success message
+      const response = await axios.post('/auth/register', registerData);
+
+      // Log successful response
+      console.log('Registration successful:', response.data);
+
+      if (response.data.token) {
+        localStorage.setItem('token', response.data.token);
+        toast.success('Registration successful!');
+        setTimeout(() => {
+          navigate('/dashboard');
+        }, 1500);
+      }
     } catch (error) {
-      if (error.response?.data?.error === 'Email already exists') {
-        toast.error('Email already exists')
+      // Detailed error logging
+      console.error('Registration error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+
+      // User-friendly error messages
+      if (error.response?.status === 400) {
+        toast.error(error.response.data.msg || 'Please check your input');
+      } else if (error.response?.status === 409) {
+        toast.error('Email already exists');
+      } else if (!error.response) {
+        toast.error('Network error. Please check your connection');
       } else {
-        toast.error(error.response?.data?.error || 'Registration failed')
+        toast.error('Registration failed. Please try again');
       }
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   const getPasswordStrength = (password) => {
     if (!password) return ''

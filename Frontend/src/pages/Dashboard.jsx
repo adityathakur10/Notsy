@@ -1,44 +1,42 @@
-import React, { use } from "react";
+import React from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
 import { assets } from "../assets/assets";
+import { toast } from "react-hot-toast";
+import { useAuth } from "../context/AuthContext";
+import Sidebar from "../components/dashboard/Sidebar";
+import MainContent from "../components/dashboard/MainContent";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
   const handleLogout = () => {
-    localStorage.removeItem("token");
+    logout();
+    toast.success("Logged out successfully");
     navigate("/auth/login");
   };
 
-  useEffect(() => {
-    const token = localStorage.getItem("token");
-    if (!token) {
-      try {
-        const decoded = jwt_decode(token);
-        setUserName(decoded.name);
-      } catch (error) {
-        console.error("Error decoding token:", error);
-      }
-    }
-  }, []);
-
   return (
-    <div
-      className="flex justify-center h-screen bg-base-white"
-      style={{ backgroundImage: `url(${assets.background})` }}
+    <div 
+      className="w-full h-screen bg-gray-50"
+      style={{ 
+        backgroundImage: `url(${assets.dashboardbg})`,
+        backgroundSize: 'cover',
+        backgroundPosition: 'center'
+      }}
     >
-      {/* Main Content */}
-      <div className="flex flex-col items-center justify-center p-8">
-        <div className="flex flex-col text-center items-center space-y-4">
-          <h1 className="text-4xl font-bold">Welcome to Notsy, {userName}!</h1>
-          <button
-            onClick={handleLogout}
-            className="flex items-center bg-primary px-6 py-3 text-base-white rounded-lg"
-          >
-            <ArrowRightOnRectangleIcon className="w-5 h-5 mr-3" />
-            Logout
-          </button>
+      <div className="flex h-full">
+        {/* Sidebar */}
+        <div className="w-64 bg-white shadow-lg">
+          <Sidebar />
+        </div>
+
+        {/* Main Content */}
+        <div className="flex-1 p-8">
+          <div className="bg-white h-full rounded-xl shadow-sm overflow-auto">
+            <MainContent />
+          </div>
         </div>
       </div>
     </div>
