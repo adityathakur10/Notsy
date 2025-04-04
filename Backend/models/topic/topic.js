@@ -5,9 +5,6 @@ const topicSchema = new mongoose.Schema({
         type: String,
         required: [true, 'Please provide topic title']
     },
-    description: {
-        type: String
-    },
     folderId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Folder',

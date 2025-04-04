@@ -6,6 +6,11 @@ const folderSchema=new mongoose.Schema({
         required:[true,'please provide folder name'],
         maxLength:20
     },
+    path:{
+        type:String,
+        required:true,
+        unique:true
+    },
     userId:{
         type:mongoose.Schema.Types.ObjectId,
         ref:'User',

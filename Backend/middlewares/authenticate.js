@@ -1,5 +1,5 @@
 const jwt=require('jsonwebtoken')
-const {UnauthenticatedError}=require('../errors/index')
+const {UnauthenticatedError,CustomAPIError}=require('../errors/index')
 
 const auth=async(req,res,next)=>{
     const authHeader=req.headers.authorization
@@ -15,7 +15,12 @@ const auth=async(req,res,next)=>{
         next()
 
     } catch (error) {
-        throw new UnauthenticatedError('Authentication invalid')
+        if(error instanceof CustomAPIError){
+            return res.status(error.statusCode).json({msg:error.message});
+        }else{
+            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({msg:'internal server error'});
+        }   
+        // throw new UnauthenticatedError('Authentication invalid')
     }
 }
 module.exports = auth

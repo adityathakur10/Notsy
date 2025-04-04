@@ -3,7 +3,7 @@ const mongoose = require('mongoose');
 const messageSchema = new mongoose.Schema({
     role: {
         type: String,
-        enum: ['user', 'assistant'],
+        enum: ['user', 'assistant','developer'],
         required: true
     },
     content: {
@@ -25,6 +25,16 @@ const chatSchema = new mongoose.Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Topic',
         required: true
+    },
+    resourceId:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Resource',
+        required:true
+    },
+    parentChatId:{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Chat',
+        default: null
     },
     userId: {
         type: mongoose.Schema.Types.ObjectId,

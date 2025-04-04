@@ -23,10 +23,18 @@ const userSchema = new mongoose.Schema({
 }, { timestamps: true })
 
 
+<<<<<<< Updated upstream
 userSchema.pre('save', async function() {
   if (!this.isModified('password')) return; 
   const salt = await bCrypt.genSalt(10);
   this.password = await bCrypt.hash(this.password, salt)
+=======
+//used to hash the password before saving
+userSchema.pre('save',async function(){
+    if(!this.isModified('password'))return ;
+    const salt =await bCrypt.genSalt(10);
+    this.password=await bCrypt.hash(this.password,salt)
+>>>>>>> Stashed changes
 })
 
 userSchema.methods.createJWT = function() {
