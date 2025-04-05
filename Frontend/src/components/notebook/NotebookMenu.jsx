@@ -8,6 +8,10 @@ import { FaAngleDown } from "react-icons/fa";
 const NotebookMenu = ({ notebook, topics = [], loading, onAddTopicClick }) => {
   const navigate = useNavigate();
 
+  const handleTopicClick = (topicId) => {
+    navigate(`/dashboard/topic/${topicId}`);
+  };
+
   return (
     <div className="h-full relative flex flex-col min-w-64">
       <div className="p-6">
@@ -49,6 +53,7 @@ const NotebookMenu = ({ notebook, topics = [], loading, onAddTopicClick }) => {
               {topics.map((topic) => (
                 <li key={topic._id}>
                   <button
+                    onClick={() => handleTopicClick(topic._id)}
                     className="flex items-center justify-between w-full bg-cover text-primary-hover bg-center p-4 text-left text-sm font-bold tracking-wide hover:bg-primary/20 rounded-xl transition-colors"
                     style={{ backgroundImage: `url(${assets.Listbg})` }}
                   >

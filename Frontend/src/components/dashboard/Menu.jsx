@@ -8,7 +8,7 @@ import { useAuth } from "../../context/AuthContext";
 import { LuNotebook } from "react-icons/lu";
 import { FaAngleDown } from "react-icons/fa";
 
-const Menu = ({ notebooks = [], loading }) => {
+const Menu = ({ notebooks = [], loading, onAddNotebookClick }) => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
 
@@ -31,7 +31,7 @@ const Menu = ({ notebooks = [], loading }) => {
         </div>
 
         <button
-          onClick={() => navigate('/dashboard/new-notebook')}
+          onClick={onAddNotebookClick} // Changed from navigate call to modal trigger
           className="flex bg-primary items-center gap-2 w-full p-4 text-sm font-medium text-base-white hover:bg-primary-hover rounded-lg transition-colors"
         >
           <PlusIcon className="w-5 h-5" />

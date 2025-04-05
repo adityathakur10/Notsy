@@ -11,6 +11,7 @@ import Listbg from './Listbg.png';
 import profile from './profile.svg';
 import modalBg from './bg.png';
 import defaultNotebook from './defaultNotebook.png';
+import defaultTopic from './defaultTopics.png';  
 
 export const assets = {
     logo,
@@ -26,4 +27,5 @@ export const assets = {
     profile,
     modalBg,
     defaultNotebook,
+    defaultTopic,
 };
