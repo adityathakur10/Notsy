@@ -2,6 +2,9 @@ const scraper = require('../../services/scrapeTranscript');
 const { StatusCodes } = require('http-status-codes');
 const { BadRequestError, NotFoundError, CustomAPIError } = require('../../errors');
 const topicModels = require('../../models/topic/topicIndex');
+const fs = require('fs').promises;
+const path = require('path');
+const axios = require('axios');
 
 const uploadUrls = async (req, res) => {
     try {
@@ -89,6 +92,78 @@ const uploadUrls = async (req, res) => {
     }
 };
 
+const uploadPdfs = async (req, res) => {
+    try {
+        if (!req.files || req.files.length === 0) {
+            throw new BadRequestError('No PDF files uploaded');
+        }
+
+        const topicId = req.body.topicId;
+        const userId = req.user.userId;
+        const pdfFiles = req.files['pdf']; // Assuming you named the field 'pdf' in multer
+
+        const uploadedPdfPaths = [];
+        const apiResponses = [];
+
+        for (const pdfFile of pdfFiles) {
+            try {
+                // 1. Save PDF locally
+                const pdfPath = path.join(__dirname, '..', '..', 'uploads', 'pdfs', `${pdfFile.originalname}_${Date.now()}.pdf`);
+                await fs.writeFile(pdfPath, pdfFile.buffer);
+                uploadedPdfPaths.push(pdfPath);
+
+                // 2. Send PDF to external API
+                const apiEndpoint = 'YOUR_EXTERNAL_API_ENDPOINT'; // Replace with your API endpoint
+                const formData = new FormData();
+                formData.append('pdf', fs.createReadStream(pdfPath), pdfFile.originalname);
+
+                const apiResponse = await axios.post(apiEndpoint, formData, {
+                    headers: {
+                        ...formData.getHeaders(),
+                        'Authorization': 'Bearer YOUR_API_KEY' // If needed
+                    }
+                });
+
+                apiResponses.push({
+                    pdfName: pdfFile.originalname,
+                    status: 'success',
+                    data: apiResponse.data
+                });
+
+            } catch (error) {
+                console.error(`Error processing PDF ${pdfFile.originalname}:`, error);
+                apiResponses.push({
+                    pdfName: pdfFile.originalname,
+                    status: 'failed',
+                    message: error.message
+                });
+            }
+        }
+
+        // Create a new Resource document
+        const newResource = await topicModels.Resource.create({
+            type: 'pdf',
+            source: uploadedPdfPaths, // Store the local file paths
+            topicId,
+            userId
+        });
+
+        return res.status(StatusCodes.CREATED).json({
+            message: 'PDFs uploaded and processed successfully',
+            data: newResource,
+            apiResponses
+        });
+
+    } catch (error) {
+        console.error('Error in uploadPdfs:', error);
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+            msg: 'Internal server error',
+            error: error.message
+        });
+    }
+};
+
 module.exports = {
-    uploadUrls
+    uploadUrls,
+    uploadPdfs
 };

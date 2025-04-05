@@ -16,7 +16,7 @@ const scrapeTranscript = async (url) => {
     let result = null;
 
     try {
-        await page.goto(url, { waitUntil: 'domcontentloaded' });
+        await page.goto(url, { waitUntil: 'domcontentloaded',timeout:60000 });
         await page.evaluate(() => {
             document.querySelector('button[aria-label*=cookies]')?.click(); // Closing the cookie banner
         });
