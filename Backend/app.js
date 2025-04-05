@@ -23,7 +23,7 @@ app.use(express.json());
 
 // Routes
 app.use('/notsy/auth', require('./routes/auth'));
-app.use('/notsy/folder', authenticateUser, require('./routes/folder'));
+app.use('/notsy', authenticateUser, require('./routes/index'));
 
 // Listen function & connect to database
 const port = 3000;

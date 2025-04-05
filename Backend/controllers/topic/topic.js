@@ -5,6 +5,7 @@ const topicModel=require('../../models/topic/topicIndex')
 const Graph=require('../../models/notebook/graph')
 
 const createTopic=async(req,res)=>{
+  // console.log('hi')
     const userId=req.user.userId;
     const {folderId,topic}=req.body;
     try {

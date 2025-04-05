@@ -123,5 +123,6 @@ const deleteFolder = async (req, res) => {
 module.exports={
     createFolder,
     getAllFolders,
-    deleteFolder
+    deleteFolder,
+    getFolderById
 }
