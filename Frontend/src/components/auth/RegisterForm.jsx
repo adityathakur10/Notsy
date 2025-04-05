@@ -3,9 +3,11 @@ import { Link, useNavigate } from 'react-router-dom'
 import { toast } from 'react-hot-toast'
 import { EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline'
 import axios from '../../utils/axios'
+import { useAuth } from '../../context/AuthContext' // Add this import
 
 const RegisterForm = () => {
   const navigate = useNavigate()
+  const { login } = useAuth() // Add this line
   const [loading, setLoading] = useState(false)
   const [showPassword, setShowPassword] = useState(false)
   const [showConfirmPassword, setShowConfirmPassword] = useState(false)
@@ -81,40 +83,16 @@ const RegisterForm = () => {
     try {
       setLoading(true);
       const { confirmPassword, ...registerData } = formData;
-
-      // Log the data being sent
-      console.log('Sending registration data:', registerData);
-
       const response = await axios.post('/auth/register', registerData);
 
-      // Log successful response
-      console.log('Registration successful:', response.data);
-
       if (response.data.token) {
-        localStorage.setItem('token', response.data.token);
+        login(response.data.user, response.data.token);
         toast.success('Registration successful!');
-        setTimeout(() => {
-          navigate('/dashboard');
-        }, 1500);
+        navigate("/dashboard", { replace: true });
       }
     } catch (error) {
-      // Detailed error logging
-      console.error('Registration error details:', {
-        message: error.message,
-        response: error.response?.data,
-        status: error.response?.status
-      });
-
-      // User-friendly error messages
-      if (error.response?.status === 400) {
-        toast.error(error.response.data.msg || 'Please check your input');
-      } else if (error.response?.status === 409) {
-        toast.error('Email already exists');
-      } else if (!error.response) {
-        toast.error('Network error. Please check your connection');
-      } else {
-        toast.error('Registration failed. Please try again');
-      }
+      console.error('Registration error:', error);
+      toast.error(error.response?.data?.msg || 'Registration failed');
     } finally {
       setLoading(false);
     }

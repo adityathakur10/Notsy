@@ -35,6 +35,9 @@ export default {
       },
       animation: {
         fadeIn: 'fadeIn 0.2s ease-out'
+      },
+      zIndex: {
+        '100000': '100000',
       }
     },
   },
