@@ -10,6 +10,10 @@ const topicSchema = new mongoose.Schema({
         ref: 'Folder',
         required: true
     },
+    path:{
+        type: String,
+        // required: [true, 'Please provide topic path']
+    },
     userId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'User',
