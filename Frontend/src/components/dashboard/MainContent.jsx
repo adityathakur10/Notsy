@@ -6,7 +6,7 @@ import { toast } from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext";
 import NotebookCard from "./NotebookCard";
 
-const MainContent = ({ notebooks }) => {
+const MainContent = ({ notebooks, loading, onDeleteNotebook }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
 
@@ -58,17 +58,27 @@ const MainContent = ({ notebooks }) => {
         </div>
 
         <div className="w-full h-[35%] pt-5">
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {notebooks?.map((notebook) => (
-              <NotebookCard key={notebook._id} notebook={notebook} />
-            ))}
-          </div>
+          {loading ? (
+            <div className="flex justify-center items-center h-full">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {notebooks?.map((notebook) => (
+                <NotebookCard 
+                  key={notebook._id} 
+                  notebook={notebook} 
+                  onDelete={onDeleteNotebook} 
+                />
+              ))}
 
-          {(!notebooks || notebooks.length === 0) && (
-            <div className="text-center py-12">
-              <p className="text-gray-500">
-                No notebooks yet. Create your first one!
-              </p>
+              {(!notebooks || notebooks.length === 0) && (
+                <div className="text-center py-12 col-span-3">
+                  <p className="text-gray-500">
+                    No notebooks yet. Create your first one!
+                  </p>
+                </div>
+              )}
             </div>
           )}
         </div>

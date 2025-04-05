@@ -1,45 +1,41 @@
-const express =require("express")
-const app=express()
-const connectDB=require('./db/connect')
+const express = require("express");
+const app = express();
+const connectDB = require('./db/connect');
 const authenticateUser = require('./middlewares/authenticate');
 require('dotenv').config();
-const cors=require('cors')
-const path=require('path')
+const cors = require('cors');
+const path = require('path');
 
+// CORS configuration
+const corsOptions = {
+  origin: 'http://localhost:5173', // Your frontend URL
+  credentials: true,
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
+  allowedHeaders: ['Content-Type', 'Authorization'],
+};
 
-const corsOptions={
-    origin:'http://localhost:5173',
-    optionsSuccessStatus:200
-}
-//middlewares
-app.use('/uploads',express.static(path.join(__dirname,'uploads')));
+// Apply CORS with options
+app.use(cors(corsOptions));
 
-app.use(cors());
-app.use(express.json())
+// Static files middleware
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+app.use(express.json());
 
-//import routes
-// const uploadRoutes=require('./routes/upload')
+// Routes
+app.use('/notsy/auth', require('./routes/auth'));
+app.use('/notsy/folder', authenticateUser, require('./routes/folder'));
 
-//routes
-app.use('/notsy/auth',require('./routes/auth'))
-// app.use('/notsy',authenticateUser ,uploadRoutes)
-app.use('/notsy',authenticateUser ,require('./routes/index'));
-
-
-
-
-
-// listen function & connect to database
-const port=3000
-const start=async()=>{
-    try {
-        await connectDB(process.env.MONGO_URI)
-        app.listen(port,()=>{
-            console.log(`database connected and listening on port ${port}` )
-        })
-    } catch (error) {
-        console.log(error)
-    }
-}
+// Listen function & connect to database
+const port = 3000;
+const start = async () => {
+  try {
+    await connectDB(process.env.MONGO_URI);
+    app.listen(port, () => {
+      console.log(`database connected and listening on port ${port}`);
+    });
+  } catch (error) {
+    console.log(error);
+  }
+};
 
 start();

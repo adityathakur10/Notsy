@@ -4,25 +4,29 @@ const folder = require('../../models/notebook/folder');
 const topicModel=require('../../models/topic/topicIndex')
 
 
-const createFolder=async(req,res)=>{
-    const name=req.body.name;
-    const userId=req.user.userId;
+const createFolder = async (req, res) => {
+    const name = req.body.name;
+    const userId = req.user.userId;
     try {
-        if(!req.files && !req.files['logo']){
+        if (!req.files || !req.files['coverImage']) {
             throw new BadRequestError('please provide folder image');
         }
-        const imagePath=`/uploads/coverImage/${req.files['coverImage'][0].filename}`;
+        // Fix the image path
+        const imagePath = `/uploads/coverImages/${req.files['coverImage'][0].filename}`;
 
-        const newFolder=await folder.findOne({name:name,userId:userId});
-        if(newFolder){
+        const newFolder = await folder.findOne({ name: name, userId: userId });
+        if (newFolder) {
             throw new BadRequestError('folder already exists');
         }
-        const folderData=await folder.create({
-            name:name,
-            path:imagePath,
-            userId:userId
+        const folderData = await folder.create({
+            name: name,
+            path: imagePath,
+            userId: userId
         });
-        return res.status(StatusCodes.CREATED).json({msg:'folder created ',folder:folderData})
+        return res.status(StatusCodes.CREATED).json({
+            msg: 'folder created',
+            folder: folderData
+        });
     } catch (error) {
         if(error instanceof CustomAPIError){
             return res.status(error.statusCode).json({msg:error.message});
@@ -84,9 +88,11 @@ const deleteFolder = async (req, res) => {
         ]);
 
         console.log('Deletion Results:', deletionResults);
+        const folders=await folder.find({userId:userId}).sort({createdAt:-1});
 
         return res.status(StatusCodes.OK).json({
             message: 'Folder and all related content deleted successfully',
+            folders: folders,
         });
     } catch (error) {
         console.error(error);

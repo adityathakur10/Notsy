@@ -6,7 +6,7 @@ import { toast } from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import Menu from "../components/dashboard/Menu";
 import MainContent from "../components/dashboard/MainContent";
-import { mockFolderService } from "../utils/mockData";
+import axios from "../utils/axios";
 
 const Dashboard = () => {
   const navigate = useNavigate();
@@ -14,41 +14,59 @@ const Dashboard = () => {
   const [notebooks, setNotebooks] = useState([]);
   const [loading, setLoading] = useState(true);
 
+  // Fetch notebooks function
+  const fetchNotebooks = async () => {
+    try {
+      const response = await axios.get("/folder");
+      setNotebooks(response.data.folders);
+    } catch (error) {
+      console.error("Error fetching notebooks:", error);
+      toast.error("Failed to fetch notebooks");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   useEffect(() => {
-    console.log("Dashboard mounted");
-    const fetchNotebooks = async () => {
-      try {
-        setLoading(true);
-        console.log("Fetching notebooks...");
-        const response = await mockFolderService.getAllFolders();
-        console.log("Notebooks received:", response.folders);
-        setNotebooks(response.folders);
-      } catch (error) {
-        console.error("Error fetching notebooks:", error);
-        toast.error("Failed to load notebooks");
-      } finally {
-        setLoading(false);
-      }
-    };
-    
     fetchNotebooks();
   }, []);
 
   const handleAddNotebook = async (notebookData) => {
     try {
-      const response = await mockFolderService.createFolder(notebookData);
-      setNotebooks(prevNotebooks => {
-        // Check if notebook already exists
-        const exists = prevNotebooks.some(n => n._id === response.folder._id);
-        if (!exists) {
-          return [...prevNotebooks, response.folder];
-        }
-        return prevNotebooks;
-      });
+      const response = await axios.post("/folder", notebookData);
+      setNotebooks((prevNotebooks) => [...prevNotebooks, response.data.folder]);
       toast.success("Notebook created successfully");
     } catch (error) {
       console.error("Error creating notebook:", error);
-      toast.error("Failed to create notebook");
+      toast.error(error.response?.data?.msg || "Failed to create notebook");
+    }
+  };
+
+  // Delete notebook handler with optimistic updates
+  const handleDeleteNotebook = async (notebookId) => {
+    try {
+      // Store current notebooks state for rollback
+      const previousNotebooks = notebooks;
+
+      // Optimistically update UI
+      setNotebooks((prevNotebooks) =>
+        prevNotebooks.filter((notebook) => notebook._id !== notebookId)
+      );
+
+      // Make API call
+      await axios.delete(`/folder/${notebookId}`);
+
+      // Show success message
+      toast.success("Notebook deleted successfully");
+    } catch (error) {
+      console.error("Error deleting notebook:", error);
+
+      // Rollback on error
+      setNotebooks(previousNotebooks);
+      toast.error(error.response?.data?.message || "Failed to delete notebook");
+
+      // Refresh notebooks list
+      fetchNotebooks();
     }
   };
 
@@ -60,15 +78,15 @@ const Dashboard = () => {
 
   return (
     <div className="h-screen w-screen overflow-hidden">
-      <div 
+      <div
         className="w-full h-full bg-cover bg-center"
         style={{ backgroundImage: `url(${assets.dashboardbg})` }}
       >
         <div className="flex h-full">
           {/* Sidebar */}
           <div className="w-64 backdrop-blur-sm">
-            <Menu 
-              notebooks={notebooks} 
+            <Menu
+              notebooks={notebooks}
               onAddNotebook={handleAddNotebook}
               loading={loading}
             />
@@ -77,9 +95,10 @@ const Dashboard = () => {
           {/* Main Content */}
           <div className="flex-1 p-5">
             <div className="backdrop-blur-sm bg-base-white p-7 h-full rounded-xl shadow-sm">
-              <MainContent 
+              <MainContent
                 notebooks={notebooks}
                 loading={loading}
+                onDeleteNotebook={handleDeleteNotebook}
               />
             </div>
           </div>

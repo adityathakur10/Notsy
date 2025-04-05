@@ -8,7 +8,7 @@ const folderSchema=new mongoose.Schema({
     },
     path:{
         type:String,
-        required:true,
+        // required:true,
         unique:true
     },
     userId:{

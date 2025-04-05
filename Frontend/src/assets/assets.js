@@ -10,6 +10,7 @@ import Seprator from './Seprator.svg';
 import Listbg from './Listbg.png';
 import profile from './profile.svg';
 import modalBg from './bg.png';
+import defaultNotebook from './defaultNotebook.png';
 
 export const assets = {
     logo,
@@ -24,4 +25,5 @@ export const assets = {
     Listbg,
     profile,
     modalBg,
+    defaultNotebook,
 };
