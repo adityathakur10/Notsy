@@ -12,7 +12,8 @@ const corsOptions={
     optionsSuccessStatus:200
 }
 //middlewares
-app.use('/uploads',express.static(path.join(__dirname,'./uploads')))
+app.use('/uploads',express.static(path.join(__dirname,'uploads')));
+
 app.use(cors());
 app.use(express.json())
 
