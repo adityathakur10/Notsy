@@ -4,9 +4,11 @@ import {toast} from "react-hot-toast";
 import {EyeIcon, EyeSlashIcon} from "@heroicons/react/24/outline";
 import axios from "../../utils/axios";
 import {assets} from "../../assets/assets";
+import {useAuth} from "../../context/AuthContext"; // Add this import
 
 const LoginForm = () => {
   const navigate = useNavigate();
+  const {login} = useAuth(); // Add this line
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({});
@@ -66,24 +68,16 @@ const LoginForm = () => {
 
     try {
       setLoading(true);
-      const response = await axios.post("http://localhost:3000/notsy/auth/login", formData);
+      const response = await axios.post("/auth/login", formData);
 
-      // Add submission animation
-      toast.promise(
-        new Promise((resolve) => setTimeout(resolve, 1000)), // Simulate delay
-        {
-          loading: "Signing in...",
-          success: "Welcome back!",
-          error: "Login failed",
-        }
-      );
-
-      localStorage.setItem("token", response.data.token);
-      setTimeout(() => {
-        navigate("/dashboard");
-      }, 1500);
+      if (response.data.token) {
+        login(response.data.user, response.data.token);
+        toast.success("Welcome back!");
+        navigate("/dashboard", { replace: true });
+      }
     } catch (error) {
-      toast.error(error.response?.data?.error || "Invalid credentials");
+      console.error('Login error:', error);
+      toast.error(error.response?.data?.msg || "Login failed");
     } finally {
       setLoading(false);
     }
