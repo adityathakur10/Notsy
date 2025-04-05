@@ -6,14 +6,14 @@ const resourceSchema = new mongoose.Schema({
         enum: ['video', 'pdf'],
         required: [true, 'Resource type is required']
     },
-    source: {
+    source: [{
         type: String,
         required: [true, 'Source (URL or file path) is required']
-    },
-    content: {
+    }],
+    content: [{
         type: String
         // required: [true, 'Content is required']
-    },
+    }],
     topicId: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Topic',

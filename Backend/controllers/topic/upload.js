@@ -1,51 +1,94 @@
 const scraper = require('../../services/scrapeTranscript');
-// const pdfParser= require('pdf-parse');
-// const fs = require('fs');
-// const path = require('path');
-const {StatusCodes}=require('http-status-codes');
-const errorsController=require('../../errors/index')
-const topicModels=require('../../models/topic/topicIndex')
+const { StatusCodes } = require('http-status-codes');
+const { BadRequestError, NotFoundError, CustomAPIError } = require('../../errors');
+const topicModels = require('../../models/topic/topicIndex');
 
-const uploadUrl=async(req,res)=>{
-    const url=String(req.body.url);
-    const topicId=req.body.topicId;
-    const userId=req.user.userId;
-
-    const videoId=new URL(url).searchParams.get('v');
-    if(!videoId){
-        return res.status(StatusCodes.BAD_REQUEST).send('Invalid URL: Video ID not found.');
-    }
+const uploadUrls = async (req, res) => {
     try {
-        const existingVideo=await topicModels.Resource.findOne({source:url,userId,topicId});
-        if(existingVideo)
-            throw new errorsController.BadRequestError('Resource already exists',existingVideo);
-        
-        // console.log('scraping transcript...')
-        const transcript=await scraper(url);
-        if(!transcript)
-            throw new errorsController.NotFoundError('Transcript not available for this video');    
-        // console.log(transcript)
-        
-        const newResource=new topicModels.Resource({
-            type:'video',
-            source:url,
-            content:transcript,
-            topicId:topicId,
-            userId:userId
-        })
-        await newResource.save();
-        //call openai api to start chat 
-        return res.status(StatusCodes.CREATED).json({message:'Resource created successfully',data:newResource});        
-    } catch (error) {
-        if(error instanceof errorsController.BadRequestError || error instanceof errorsController.NotFoundError) {
-            return res.status(error.statusCode).json({message:error.message,data:error.data});
-        }else{
-            console.log(error)
-            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({message:'Internal server error',error:error.message});
-        }
-    }
-}
+        const urls = req.body.urls;
+        const topicId = req.body.topicId;
+        const userId = req.user.userId;
 
-module.exports={
-    uploadUrl
-}
+        if (!Array.isArray(urls) || urls.length === 0) {
+            throw new BadRequestError('URLs must be a non-empty array');
+        }
+
+        const aggregatedUrls = [];
+        const aggregatedTranscripts = [];
+        const results = [];
+
+        for (const url of urls) {
+            try {
+                const videoId = new URL(url).searchParams.get('v');
+                if (!videoId) {
+                    throw new BadRequestError('Invalid URL: Video ID not found');
+                }
+
+                const existingResource = await topicModels.Resource.findOne({
+                    source: url,
+                    userId,
+                    topicId
+                });
+                
+                if (existingResource) {
+                    throw new BadRequestError('Resource already exists');
+                }
+
+                const transcript = await scraper(url);
+                if (!transcript) {
+                    throw new NotFoundError('Transcript not available for this video');
+                }
+
+                aggregatedUrls.push(url);
+                aggregatedTranscripts.push(transcript);
+                results.push({ url, status: 'success' });
+
+            } catch (error) {
+                console.error(`Error processing ${url}:`, error.message);
+                
+                results.push({
+                    url,
+                    status: 'failed',
+                    message: error.message,
+                    ...(error instanceof CustomAPIError && { errorType: error.constructor.name })
+                });
+            }
+        }
+
+        if (aggregatedUrls.length === 0) {
+            throw new NotFoundError('No valid transcripts found in any URLs');
+        }
+
+        const newResource = await topicModels.Resource.create({
+            type: 'video',
+            source: aggregatedUrls,
+            content: aggregatedTranscripts,
+            topicId,
+            userId
+        });
+
+        return res.status(StatusCodes.CREATED).json({
+            message: `Processed ${aggregatedUrls.length}/${urls.length} URLs successfully`,
+            data: newResource,
+            results
+        });
+
+    } catch (error) {
+        if (error instanceof CustomAPIError) {
+            return res.status(error.statusCode).json({
+                msg: error.message,
+                ...(error.results && { results: error.results })
+            });
+        }
+        
+        console.error('Unexpected error:', error);
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+            msg: 'Internal server error',
+            ...(process.env.NODE_ENV === 'development' && { debug: error.message })
+        });
+    }
+};
+
+module.exports = {
+    uploadUrls
+};

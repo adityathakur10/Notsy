@@ -41,6 +41,9 @@ const chatSchema = new mongoose.Schema({
         ref: 'User',
         required: true
     },
+    tempt:{
+        type:Number,
+    },
     messages: [messageSchema],
     summary: [
         { type:String}
