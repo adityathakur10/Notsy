@@ -6,7 +6,7 @@ const {uploadUrl}=require('../controllers/topic/upload')
 
 
 // router.post('/uploadPDF', upload.single("pdf"), uploadPDF);
-router.post('/uploadURL', uploadUrl);
+router.post('/uploadUrl', uploadUrl);
 
 
 module.exports = router;

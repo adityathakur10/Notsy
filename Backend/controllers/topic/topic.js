@@ -26,6 +26,26 @@ const createTopic=async(req,res)=>{
         }
     }
 }
+
+const getTopicById=async(req,res)=>{
+    const userId=req.user.userId;
+    const topicId=req.params.id;
+    try {
+        // const topic=await topicModel.Topic.findOne({userId,topicId});
+        const topic=await topicModel.Topic.findById(topicId)
+        if(!topic){
+            throw new NotFoundError('Topic not found')
+        }
+        const resources=await topicModel.Resource.find({topicId});
+        res.status(StatusCodes.OK).json({topic,resources})
+    } catch (error) {
+        if(error instanceof CustomAPIError){
+            res.status(error.statusCode).json({msg:error.message})
+        }else{
+            res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({msg:'Something went wrong'})
+        }
+    }
+}
 const getAllTopics=async(req,res)=>{
     const userId=req.user.userId;
     const {folderId}=req.body;
@@ -97,5 +117,6 @@ const deleteTopic = async (req, res) => {
   module.exports={
     createTopic,
     getAllTopics,
-    deleteTopic
+    deleteTopic,
+    getTopicById
   }

@@ -31,7 +31,7 @@ const checkFileType=(file,cb)=>{
 
 const upload=(destination)=>multer({
     storage:storage(destination),
-    limits:{fileSize:2000000},
+    limits:{fileSize:20000000},
     fileFilter:(req,file,cb)=>{
         checkFileType(file,cb);
     }   
