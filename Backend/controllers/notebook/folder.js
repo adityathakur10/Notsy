@@ -31,6 +31,23 @@ const createFolder=async(req,res)=>{
     }
 }
 
+const getFolderById=async(req,res)=>{
+    const folderId=req.params.id;
+    const userId=req.user.userId;
+    try {
+        const folderData=await folder.findOne({_id:folderId,userId:userId});
+        const topics=await topicModel.Topic.find({folderId:folderId});
+        if(!folderData){
+            throw new NotFoundError('folder not found');
+        }
+        return res.status(StatusCodes.OK).json({msg:'folder found',folder:folderData,topics});
+    } catch (error) {
+        if(error instanceof CustomAPIError){
+            return res.status(error.statusCode).json({msg:error.message});
+        }
+        return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({msg:'internal server error'});
+    }
+}
 const getAllFolders=async(req,res)=>{
     const userId=req.user.userId;
     try {
@@ -51,9 +68,7 @@ const getAllFolders=async(req,res)=>{
         return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({msg:'internal server error'});
     }
 }
-// const deleteFolder=async(req,res)=>{
-//     console.log('hello')
-// }
+
 const deleteFolder = async (req, res) => {
     console.log('hii');
     const folderId = req.params.id; // If using path params
@@ -84,9 +99,11 @@ const deleteFolder = async (req, res) => {
         ]);
 
         console.log('Deletion Results:', deletionResults);
+        const folders=await folder.find({userId:userId}).sort({createdAt:-1});
 
         return res.status(StatusCodes.OK).json({
             message: 'Folder and all related content deleted successfully',
+            folders:folders
         });
     } catch (error) {
         console.error(error);

@@ -7,9 +7,6 @@ const openai = require('../config/openAiClient');
 const Resource = require('../models/topic/resources');  
 const Chat = require('../models/topic/chat');
 
-const home = (req, res) => {
-    res.send('home route');
-};
 
 const uploadURL = async (req, res) => {
     const url = String(req.body.url);

@@ -1,10 +1,6 @@
 const mongoose = require('mongoose');
 
 const resourceSchema = new mongoose.Schema({
-    // title: {
-    //     type: String,
-    //     required: [true, 'Please provide resource title']
-    // },
     type: {
         type: String,
         enum: ['video', 'pdf'],

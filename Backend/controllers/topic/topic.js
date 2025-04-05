@@ -8,11 +8,13 @@ const createTopic=async(req,res)=>{
     const userId=req.user.userId;
     const {folderId,topic}=req.body;
     try {
-        const topicExist=await topicModel.Topic.findOne({title:topic,folderId,userId})
-        if(topicExist){
-            throw new BadRequestError('Topic already exists')
-        }
-        const newTopic =await topicModel.Topic.create({title:topic,folderId,userId});
+      const topicExist=await topicModel.Topic.findOne({title:topic,folderId,userId})
+      if(topicExist){
+        throw new BadRequestError('Topic already exists')
+      }
+      // console.log(folderId)
+      const newTopic =await topicModel.Topic.create({title:topic,folderId:folderId,userId:userId});
+      // console.log('hi')
         res.status(StatusCodes.CREATED).json({newTopic});
             
     } catch (error) {
@@ -25,7 +27,7 @@ const createTopic=async(req,res)=>{
 }
 const getAllTopics=async(req,res)=>{
     const userId=req.user.userId;
-    const {folderId}=req.params;
+    const {folderId}=req.body;
     try {
         const topics=await topicModel.Topic.find({userId,folderId});
         if(!topics){
@@ -43,6 +45,7 @@ const getAllTopics=async(req,res)=>{
 const deleteTopic = async (req, res) => {
     const userId = req.user.userId;
     const topicId = req.params.id;
+    const folderId=req.body.folderId;
   
     try {
       // 1. Verify that the topic exists and belongs to the user
@@ -79,8 +82,9 @@ const deleteTopic = async (req, res) => {
           }
         }
       );
-  
-      return res.status(StatusCodes.OK).json({ msg: 'Topic and all related content deleted successfully' });
+      const topics=await topicModel.Topic.find({userId,folderId});
+
+      return res.status(StatusCodes.OK).json({ msg: 'Topic and all related content deleted successfully',topics });
     } catch (error) {
       if (error instanceof CustomAPIError) {
         return res.status(error.statusCode).json({ msg: error.message });
