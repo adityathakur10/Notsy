@@ -6,6 +6,7 @@ import Register from "../pages/Register";
 import Dashboard from "../pages/Dashboard";
 import ProtectedRoute from "../components/ProtectedRoute";
 import AddNotebook from "../pages/AddNotebook";
+import NotebookDashboard from "../pages/NotebookDashboard";
 
 const router = createBrowserRouter([
   {
@@ -37,6 +38,10 @@ const router = createBrowserRouter([
       {
         path: "new-notebook",
         element: <AddNotebook />,
+      },
+      {
+        path: "notebook/:notebookId",
+        element: <NotebookDashboard />,
       },
     ],
   },

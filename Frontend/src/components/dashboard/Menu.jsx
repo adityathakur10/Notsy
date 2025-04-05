@@ -18,6 +18,10 @@ const Menu = ({ notebooks = [], loading }) => {
     navigate("/auth/login");
   };
 
+  const handleNotebookClick = (notebookId) => {
+    navigate(`/dashboard/notebook/${notebookId}`);
+  };
+
   return (
     <div className="h-full relative flex flex-col min-w-64">
       <div className="p-6">
@@ -49,6 +53,7 @@ const Menu = ({ notebooks = [], loading }) => {
               {notebooks.map((notebook) => (
                 <li key={notebook._id}>
                   <button
+                    onClick={() => handleNotebookClick(notebook._id)}
                     className="flex items-center justify-between w-full bg-cover text-primary-hover bg-center p-4 text-left text-sm font-bold tracking-wide hover:bg-primary/20 rounded-xl transition-colors"
                     style={{ backgroundImage: `url(${assets.Listbg})` }}
                   >
