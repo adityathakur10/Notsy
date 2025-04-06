@@ -6,6 +6,7 @@ import { toast } from "react-hot-toast";
 import { useAuth } from "../context/AuthContext";
 import Menu from "../components/dashboard/Menu";
 import MainContent from "../components/dashboard/MainContent";
+import AddNotebookModal from "../components/dashboard/AddNotebookModal";
 import axios from "../utils/axios";
 
 const Dashboard = () => {
@@ -13,15 +14,23 @@ const Dashboard = () => {
   const { user, logout } = useAuth();
   const [notebooks, setNotebooks] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [creatingNotebook, setCreatingNotebook] = useState(false);
 
   // Fetch notebooks function
   const fetchNotebooks = async () => {
     try {
-      const response = await axios.get("/folder");
+      setLoading(true);
+      const response = await axios.get('/folder');
+      console.log('Notebooks response:', response.data);
       setNotebooks(response.data.folders);
     } catch (error) {
-      console.error("Error fetching notebooks:", error);
-      toast.error("Failed to fetch notebooks");
+      console.error('Error details:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status
+      });
+      toast.error('Failed to load notebooks');
     } finally {
       setLoading(false);
     }
@@ -31,14 +40,25 @@ const Dashboard = () => {
     fetchNotebooks();
   }, []);
 
-  const handleAddNotebook = async (notebookData) => {
+  const handleAddNotebook = async (formData) => {
     try {
-      const response = await axios.post("/folder", notebookData);
-      setNotebooks((prevNotebooks) => [...prevNotebooks, response.data.folder]);
-      toast.success("Notebook created successfully");
+      setCreatingNotebook(true);
+      const response = await axios.post("/folder", formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      if (response.data.folder) {
+        setNotebooks(prev => [...prev, response.data.folder]);
+        toast.success("Notebook created successfully");
+        setIsModalOpen(false);
+      }
     } catch (error) {
       console.error("Error creating notebook:", error);
       toast.error(error.response?.data?.msg || "Failed to create notebook");
+    } finally {
+      setCreatingNotebook(false);
     }
   };
 
@@ -87,7 +107,7 @@ const Dashboard = () => {
           <div className="w-64 backdrop-blur-sm">
             <Menu
               notebooks={notebooks}
-              onAddNotebook={handleAddNotebook}
+              onAddNotebookClick={() => setIsModalOpen(true)} // This triggers the modal
               loading={loading}
             />
           </div>
@@ -104,6 +124,14 @@ const Dashboard = () => {
           </div>
         </div>
       </div>
+
+      {/* Add Notebook Modal */}
+      <AddNotebookModal
+        isOpen={isModalOpen}
+        onClose={() => setIsModalOpen(false)}
+        onAdd={handleAddNotebook}
+        loading={creatingNotebook}
+      />
     </div>
   );
 };

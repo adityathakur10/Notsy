@@ -5,8 +5,9 @@ import Login from "../pages/Login";
 import Register from "../pages/Register";
 import Dashboard from "../pages/Dashboard";
 import ProtectedRoute from "../components/ProtectedRoute";
-import AddNotebook from "../pages/AddNotebook";
 import NotebookDashboard from "../pages/NotebookDashboard";
+import TopicDashboard from "../pages/TopicDashboard";
+import ResourceViewerPage from "../pages/ResourceViewerPage";
 
 const router = createBrowserRouter([
   {
@@ -36,12 +37,16 @@ const router = createBrowserRouter([
         element: <Dashboard />,
       },
       {
-        path: "new-notebook",
-        element: <AddNotebook />,
-      },
-      {
         path: "notebook/:notebookId",
         element: <NotebookDashboard />,
+      },
+      {
+        path: "topic/:topicId",
+        element: <TopicDashboard />,
+      },
+      {
+        path: "resource/:resourceId",
+        element: <ResourceViewerPage />,
       },
     ],
   },

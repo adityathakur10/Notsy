@@ -1,20 +1,65 @@
-import React from "react";
+import React, { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { ArrowRightOnRectangleIcon } from "@heroicons/react/24/outline";
 import { assets } from "../../assets/assets";
 import { toast } from "react-hot-toast";
 import { useAuth } from "../../context/AuthContext";
 import NotebookCard from "./NotebookCard";
+import axios from "../../utils/axios";
+import GraphViewer from "../graph/GraphViewer";
 
-const MainContent = ({ notebooks, loading, onDeleteNotebook }) => {
+const MainContent = ({ notebooks = [], loading, onDeleteNotebook }) => {
   const { user } = useAuth();
   const navigate = useNavigate();
+  const [topics, setTopics] = useState([]);
+  const [resources, setResources] = useState([]);
+
+  useEffect(() => {
+    const fetchTopicsAndResources = async () => {
+      if (!notebooks.length) return;
+
+      try {
+        // Fetch topics for all notebooks
+        const topicPromises = notebooks.map((notebook) =>
+          axios.get(`/folder/${notebook._id}`)
+        );
+
+        const topicResponses = await Promise.all(topicPromises);
+
+        // Combine all topics
+        const allTopics = topicResponses.reduce((acc, response) => {
+          return [...acc, ...(response.data.topics || [])];
+        }, []);
+
+        setTopics(allTopics);
+
+        // Now fetch resources for all topics
+        const resourcePromises = allTopics.map((topic) =>
+          axios.get(`/topic/${topic._id}`)
+        );
+
+        const resourceResponses = await Promise.all(resourcePromises);
+
+        // Combine all resources
+        const allResources = resourceResponses.reduce((acc, response) => {
+          return [...acc, ...(response.data.resources || [])];
+        }, []);
+
+        setResources(allResources);
+      } catch (error) {
+        console.error("Error fetching graph data:", error);
+      }
+    };
+
+    fetchTopicsAndResources();
+  }, [notebooks]);
 
   return (
     <>
-      <div className="flex flex-col w-full h-full">
-        <div className="flex w-full gap-10 h-[65%]">
-          <div className="flex flex-col gap-5 w-[40%] h-full">
+      <div className="h-full flex flex-col gap-6">
+        <div className="flex gap-6 h-[65%]">
+          {/* Stats Section */}
+          <div className="w-[40%] flex flex-col gap-5">
             <div
               className="flex flex-col items-start justify-center p-8 w-full h-[45%] rounded-xl bg-cover bg-center"
               style={{ backgroundImage: `url(${assets.WelcomeCard})` }}
@@ -54,7 +99,14 @@ const MainContent = ({ notebooks, loading, onDeleteNotebook }) => {
             </div>
           </div>
 
-          <div className="w-[60%] h-full rounded-xl bg-base-black"></div>
+          {/* Graph Section */}
+          <div className="w-[60%] h-full rounded-xl">
+            <GraphViewer
+              notebooks={notebooks}
+              topics={topics}
+              resources={resources}
+            />
+          </div>
         </div>
 
         <div className="w-full h-[35%] pt-5">
@@ -65,10 +117,10 @@ const MainContent = ({ notebooks, loading, onDeleteNotebook }) => {
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {notebooks?.map((notebook) => (
-                <NotebookCard 
-                  key={notebook._id} 
-                  notebook={notebook} 
-                  onDelete={onDeleteNotebook} 
+                <NotebookCard
+                  key={notebook._id}
+                  notebook={notebook}
+                  onDelete={onDeleteNotebook}
                 />
               ))}
 

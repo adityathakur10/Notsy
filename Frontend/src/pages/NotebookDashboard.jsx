@@ -39,24 +39,35 @@ const NotebookDashboard = () => {
     }
   }, [notebookId, navigate]);
 
-  const handleAddTopic = async (topicData) => {
+  const handleAddTopic = async (formData) => {
     try {
       setAddingTopic(true);
-      const response = await axios.post("/topic", {
-        topic: topicData.title,
-        folderId: notebookId
+      
+      // Create proper FormData
+      const topicFormData = new FormData();
+      topicFormData.append('topic', formData.get('title')); // Change 'title' to 'topic'
+      topicFormData.append('folderId', notebookId);
+      
+      if (formData.get('coverImage')) {
+        topicFormData.append('coverImage', formData.get('coverImage'));
+      }
+
+      const response = await axios.post("/topic", topicFormData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
       });
 
-      if (response.data.newTopic) {
+      if (response.data.newTopic) { // Change response.data.topic to response.data.newTopic
         setTopics(prev => [...prev, response.data.newTopic]);
         toast.success("Topic created successfully");
+        setIsModalOpen(false);
       }
     } catch (error) {
       console.error("Error creating topic:", error);
       toast.error(error.response?.data?.msg || "Failed to create topic");
     } finally {
       setAddingTopic(false);
-      setIsModalOpen(false);
     }
   };
 
