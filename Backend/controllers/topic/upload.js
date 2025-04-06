@@ -27,15 +27,15 @@ const uploadUrls = async (req, res) => {
                     throw new BadRequestError('Invalid URL: Video ID not found');
                 }
 
-                const existingResource = await topicModels.Resource.findOne({
-                    source: url,
-                    userId,
-                    topicId
-                });
+                // const existingResource = await topicModels.Resource.findOne({
+                //     source: url,
+                //     userId,
+                //     topicId
+                // });
                 
-                if (existingResource) {
-                    throw new BadRequestError('Resource already exists');
-                }
+                // if (existingResource) {
+                //     throw new BadRequestError('Resource already exists');
+                // }
 
                 const transcript = await scraper(url);
                 if (!transcript) {
@@ -69,9 +69,22 @@ const uploadUrls = async (req, res) => {
             topicId,
             userId
         });
-
+        const response=await axios.post(' http://127.0.0.1:8000/upload/',{
+            type: 'video',
+            source: aggregatedUrls,
+            content: aggregatedTranscripts,
+            topicId,
+            userId
+        },{
+            timeout:1800000
+        })
         return res.status(StatusCodes.CREATED).json({
-            message: `Processed ${aggregatedUrls.length}/${urls.length} URLs successfully`,
+            response: {
+                status: response.status,
+                data: response.data, // Only send serializable data
+                headers: response.headers
+            },
+            message: `Processed...`,
             data: newResource,
             results
         });
