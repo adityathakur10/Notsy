@@ -3,10 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { assets } from "../../assets/assets";
 import { TrashIcon } from "@heroicons/react/24/outline";
 import { toast } from "react-hot-toast";
+import GraphViewer from "../graph/GraphViewer";
 
 const NotebookMainContent = ({
   notebook,
   topics,
+  resources, // Add this prop
   loading,
   onAddTopic,
   onDeleteTopic,
@@ -35,6 +37,7 @@ const NotebookMainContent = ({
 
   return (
     <div className="flex flex-col w-full h-full">
+      {/* Stats Section - Fixed */}
       <div className="flex w-full gap-10 h-[65%]">
         <div className="flex flex-col gap-5 w-[40%] h-full">
           {/* Welcome Card */}
@@ -78,73 +81,85 @@ const NotebookMainContent = ({
           </div>
         </div>
 
-        <div className="w-[60%] h-full rounded-xl bg-base-black"></div>
+        {/* Graph Section */}
+        <div className="w-[60%] h-full rounded-xl bg-white/5">
+          <GraphViewer
+            notebooks={notebook ? [notebook] : []}
+            topics={topics || []}
+            resources={resources || []} // Use the resources prop directly
+          />
+        </div>
       </div>
 
-      <div className="w-full h-[35%] pt-5">
+      {/* Topics Grid - Scrollable */}
+      <div className="w-full h-[35%] pt-5 min-h-0 flex flex-col">
         {loading ? (
           <div className="flex justify-center items-center h-full">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
           </div>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {/* Topic Cards */}
-            {topics?.map((topic) => (
-              <div
-                key={topic._id}
-                onClick={() => navigate(`/dashboard/topic/${topic._id}`)}
-                className="group relative h-[200px] rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer"
-              >
-                <div className="aspect-[4/3] overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5">
-                  <img
-                    src={topic.path || assets.defaultTopic}
-                    alt={topic.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                    onError={(e) => {
-                      e.target.src = assets.defaultTopic;
-                      e.target.onerror = null;
-                    }}
-                  />
-                </div>
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
-                <div className="absolute bottom-0 p-4 w-full">
-                  <h3 className="text-lg font-semibold text-white truncate">
-                    {topic.title}
-                  </h3>
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      navigate(`/dashboard/topic/${topic._id}`);
-                    }}
-                    className="text-sm text-white/80 hover:text-white transition-colors"
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <div className="h-full overflow-y-auto scrollbar-hide pr-2">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-6">
+                {/* Topic Cards */}
+                {topics?.map((topic) => (
+                  <div
+                    key={topic._id}
+                    onClick={() => navigate(`/dashboard/topic/${topic._id}`)}
+                    className="group relative h-[200px] rounded-xl overflow-hidden shadow-md hover:shadow-lg transition-shadow cursor-pointer"
                   >
-                    Open →
-                  </button>
-                </div>
+                    <div className="aspect-[4/3] overflow-hidden bg-gradient-to-br from-primary/10 to-primary/5">
+                      <img
+                        src={topic.path || assets.defaultTopic}
+                        alt={topic.title}
+                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
+                        onError={(e) => {
+                          e.target.src = assets.defaultTopic;
+                          e.target.onerror = null;
+                        }}
+                      />
+                    </div>
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent" />
+                    <div className="absolute bottom-0 p-4 w-full">
+                      <h3 className="text-lg font-semibold text-white truncate">
+                        {topic.title}
+                      </h3>
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          navigate(`/dashboard/topic/${topic._id}`);
+                        }}
+                        className="text-sm text-white/80 hover:text-white transition-colors"
+                      >
+                        Open →
+                      </button>
+                    </div>
 
-                <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      setDeletingTopicId(topic._id);
-                      setShowConfirm(true);
-                    }}
-                    disabled={deleting}
-                    className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 disabled:opacity-50"
-                  >
-                    <TrashIcon className="w-5 h-5" />
-                  </button>
-                </div>
-              </div>
-            ))}
+                    <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          setDeletingTopicId(topic._id);
+                          setShowConfirm(true);
+                        }}
+                        disabled={deleting}
+                        className="p-2 bg-red-500 text-white rounded-full hover:bg-red-600 disabled:opacity-50"
+                      >
+                        <TrashIcon className="w-5 h-5" />
+                      </button>
+                    </div>
+                  </div>
+                ))}
 
-            {(!topics || topics.length === 0) && !loading && (
-              <div className="text-center py-12 col-span-3">
-                <p className="text-gray-500">
-                  No topics yet. Create your first one!
-                </p>
+                {(!topics || topics.length === 0) && !loading && (
+                  <div className="text-center py-12 col-span-3">
+                    <p className="text-gray-500">
+                      No topics yet. Create your first one!
+                    </p>
+                  </div>
+                )}
               </div>
-            )}
+            </div>
           </div>
         )}
       </div>

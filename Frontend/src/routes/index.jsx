@@ -8,6 +8,7 @@ import ProtectedRoute from "../components/ProtectedRoute";
 import NotebookDashboard from "../pages/NotebookDashboard";
 import TopicDashboard from "../pages/TopicDashboard";
 import ResourceViewerPage from "../pages/ResourceViewerPage";
+import GraphViewPage from "../pages/GraphViewPage";
 
 const router = createBrowserRouter([
   {
@@ -47,6 +48,10 @@ const router = createBrowserRouter([
       {
         path: "resource/:resourceId",
         element: <ResourceViewerPage />,
+      },
+      {
+        path: "graph-view",
+        element: <GraphViewPage />,
       },
     ],
   },

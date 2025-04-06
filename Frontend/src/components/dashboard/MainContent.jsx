@@ -14,6 +14,11 @@ const MainContent = ({ notebooks = [], loading, onDeleteNotebook }) => {
   const [topics, setTopics] = useState([]);
   const [resources, setResources] = useState([]);
 
+  // Add handleNotebookClick function
+  const handleNotebookClick = (notebookId) => {
+    navigate(`/dashboard/notebook/${notebookId}`);
+  };
+
   useEffect(() => {
     const fetchTopicsAndResources = async () => {
       if (!notebooks.length) return;
@@ -33,18 +38,21 @@ const MainContent = ({ notebooks = [], loading, onDeleteNotebook }) => {
 
         setTopics(allTopics);
 
-        // Now fetch resources for all topics
+        // Fetch resources for all topics
         const resourcePromises = allTopics.map((topic) =>
           axios.get(`/topic/${topic._id}`)
         );
 
         const resourceResponses = await Promise.all(resourcePromises);
 
-        // Combine all resources
+        // Combine all resources with proper topicId
         const allResources = resourceResponses.reduce((acc, response) => {
-          return [...acc, ...(response.data.resources || [])];
+          const resources = response.data.resources || [];
+          // Ensure each resource has proper topicId
+          return [...acc, ...resources];
         }, []);
 
+        console.log("Fetched resources:", allResources);
         setResources(allResources);
       } catch (error) {
         console.error("Error fetching graph data:", error);
@@ -56,8 +64,8 @@ const MainContent = ({ notebooks = [], loading, onDeleteNotebook }) => {
 
   return (
     <>
-      <div className="h-full flex flex-col gap-6">
-        <div className="flex gap-6 h-[65%]">
+      <div className="flex flex-col h-full">
+        <div className="flex w-full gap-10 h-[65%]">
           {/* Stats Section */}
           <div className="w-[40%] flex flex-col gap-5">
             <div
@@ -109,28 +117,38 @@ const MainContent = ({ notebooks = [], loading, onDeleteNotebook }) => {
           </div>
         </div>
 
-        <div className="w-full h-[35%] pt-5">
+        {/* Notebooks Grid - Modified for scrolling and click handling */}
+        <div className="w-full h-[35%] pt-5 min-h-0 flex flex-col">
           {loading ? (
             <div className="flex justify-center items-center h-full">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {notebooks?.map((notebook) => (
-                <NotebookCard
-                  key={notebook._id}
-                  notebook={notebook}
-                  onDelete={onDeleteNotebook}
-                />
-              ))}
+            <div className="flex-1 min-h-0 overflow-hidden">
+              <div className="h-full overflow-y-auto scrollbar-hide pr-2">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 pb-6">
+                  {notebooks?.map((notebook) => (
+                    <div 
+                      key={notebook._id}
+                      className="relative group cursor-pointer"
+                      onClick={() => handleNotebookClick(notebook._id)}
+                    >
+                      <NotebookCard
+                        notebook={notebook}
+                        onDelete={() => onDeleteNotebook(notebook._id)}
+                      />
+                    </div>
+                  ))}
 
-              {(!notebooks || notebooks.length === 0) && (
-                <div className="text-center py-12 col-span-3">
-                  <p className="text-gray-500">
-                    No notebooks yet. Create your first one!
-                  </p>
+                  {(!notebooks || notebooks.length === 0) && (
+                    <div className="text-center py-12 col-span-3">
+                      <p className="text-gray-500">
+                        No notebooks yet. Create your first one!
+                      </p>
+                    </div>
+                  )}
                 </div>
-              )}
+              </div>
             </div>
           )}
         </div>

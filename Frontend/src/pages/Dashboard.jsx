@@ -23,14 +23,21 @@ const Dashboard = () => {
       setLoading(true);
       const response = await axios.get('/folder');
       console.log('Notebooks response:', response.data);
-      setNotebooks(response.data.folders);
+      setNotebooks(response.data.folders || []); // Add fallback empty array
     } catch (error) {
       console.error('Error details:', {
         message: error.message,
         response: error.response?.data,
         status: error.response?.status
       });
-      toast.error('Failed to load notebooks');
+      
+      // Check if it's a "no folders found" error
+      if (error.response?.status === 404 && error.response?.data?.msg === 'no folders found') {
+        setNotebooks([]); // Set empty array instead of showing error
+      } else {
+        // Only show error toast for actual errors
+        toast.error('Failed to load notebooks');
+      }
     } finally {
       setLoading(false);
     }

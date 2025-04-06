@@ -9,110 +9,122 @@ const GraphViewer = ({ notebooks = [], topics = [], resources = [] }) => {
   const graphRef = useRef(null);
   const rendererRef = useRef(null);
   const navigate = useNavigate();
+  const isDraggingRef = useRef(false);
+  const draggedNodeRef = useRef(null);
+
+  const INITIAL_RADIUS = 400; 
+  const TOPIC_SPREAD = 200; 
+  const RESOURCE_SPREAD = 300; 
 
   useEffect(() => {
-    if (!notebooks.length && !topics.length && !resources.length) {
-      return;
-    }
+    if (!notebooks.length && !topics.length && !resources.length) return;
 
     try {
       const graph = new Graph();
+      graphRef.current = graph;
 
-      // Add notebook nodes first
-      notebooks.forEach(notebook => {
+      // Spread notebooks further apart
+      notebooks.forEach((notebook, index) => {
         if (notebook?._id && notebook?.name) {
+          const angle = (index / notebooks.length) * 2 * Math.PI;
           graph.addNode(notebook._id, {
             label: notebook.name,
-            size: 15,
+            size: 8, // Even smaller nodes
             color: '#7D4FFF',
             type: 'notebook',
-            x: Math.random() * 100 - 50,
-            y: Math.random() * 100 - 50
+            x: Math.cos(angle) * INITIAL_RADIUS,
+            y: Math.sin(angle) * INITIAL_RADIUS
           });
         }
       });
 
-      // Add topic nodes and edges
+      // Spread topics further from notebooks
       topics.forEach(topic => {
         if (topic?._id && topic?.title && topic?.folderId) {
-          graph.addNode(topic._id, {
-            label: topic.title,
-            size: 10,
-            color: '#6a43d9',
-            type: 'topic',
-            x: Math.random() * 100 - 50,
-            y: Math.random() * 100 - 50
-          });
+          const notebookPos = graph.getNodeAttributes(topic.folderId);
+          if (notebookPos) {
+            graph.addNode(topic._id, {
+              label: topic.title,
+              size: 6,
+              color: '#78E9D2',
+              type: 'topic',
+              x: notebookPos.x + (Math.random() - 0.5) * TOPIC_SPREAD,
+              y: notebookPos.y + (Math.random() - 0.5) * TOPIC_SPREAD
+            });
 
-          // Only add edge if both nodes exist
-          if (graph.hasNode(topic.folderId)) {
+            // Thinner but longer edges
             graph.addEdge(topic.folderId, topic._id, {
               type: 'topic-notebook',
-              size: 2,
-              color: '#ddd'
+              size: 1, // Thinner edge
+              color: '#7D4FFF80' // Added transparency
             });
           }
         }
       });
 
-      // Add resource nodes and edges
+      // Add resources with larger spread
       resources.forEach(resource => {
         if (resource?._id && resource?.topicId) {
-          graph.addNode(resource._id, {
-            label: resource.title || 'Resource',
-            size: 5,
-            color: '#FF4F5B',
-            type: 'resource',
-            x: Math.random() * 100 - 50,
-            y: Math.random() * 100 - 50
-          });
+          const topicPos = graph.getNodeAttributes(resource.topicId);
+          if (topicPos) {
+            graph.addNode(resource._id, {
+              label: resource.title || 'Resource',
+              size: 5, // Reduced from 7
+              color: '#FF4F5B',
+              type: 'resource',
+              x: topicPos.x + (Math.random() - 0.5) * RESOURCE_SPREAD,
+              y: topicPos.y + (Math.random() - 0.5) * RESOURCE_SPREAD
+            });
 
-          // Only add edge if both nodes exist
-          if (graph.hasNode(resource.topicId)) {
             graph.addEdge(resource.topicId, resource._id, {
               type: 'resource-topic',
-              size: 1,
-              color: '#eee'
+              size: 1.5, // Thinner edge
+              color: '#FF4F5B'
             });
           }
         }
       });
 
-      // Apply layout
+      // Update force-directed layout settings
       const sensibleSettings = forceAtlas2.inferSettings(graph);
       forceAtlas2.assign(graph, {
-        iterations: 100,
+        iterations: 150, // Increased iterations
         settings: {
           ...sensibleSettings,
-          gravity: 2,
-          scalingRatio: 10,
-          strongGravityMode: true,
-          slowDown: 1
+          gravity: 0.05, // Further reduced gravity
+          scalingRatio: 200, // Doubled scaling ratio
+          strongGravityMode: false,
+          slowDown: 5,
+          adjustSizes: true,
+          linLogMode: true,
+          outboundAttractionDistribution: true,
+          barnesHutOptimize: true,
+          barnesHutTheta: 0.5,
+          preventOverlap: true,
+          edgeWeightInfluence: 0.5, // Reduced edge influence
+          nodeSpacing: 200 // Increased node spacing
         }
       });
 
-      // Initialize renderer with fixed program settings
+      // Update Sigma renderer settings
       if (containerRef.current) {
         rendererRef.current = new Sigma(graph, containerRef.current, {
-          minCameraRatio: 0.1,
-          maxCameraRatio: 10,
-          labelColor: { color: '#000' },
-          nodeHoverColor: '#000',
-          defaultNodeColor: '#999',
-          defaultEdgeColor: '#eee',
-          renderLabels: true,
-          labelSize: 12,
-          labelWeight: 'bold',
-          defaultNodeType: 'circle',
-          defaultEdgeType: 'line',
-          // Node reducer
+          minCameraRatio: 0.05, // Allow more zoom out
+          maxCameraRatio: 20,
+          renderEdgeLabels: true,
+          defaultEdgeType: 'line', // Changed from arrow for cleaner look
+          labelDensity: 0.5, // Reduced label density
+          labelGridCellSize: 100, // Increased label spacing
+          labelRenderedSizeThreshold: 8,
+          zIndex: true,
           nodeReducer: (_, data) => {
             if (!data) {
               return {
                 size: 5,
                 color: '#999',
                 label: '',
-                type: 'circle'
+                type: 'circle',
+                dragEnabled: true // Enable dragging for nodes
               };
             }
 
@@ -123,10 +135,10 @@ const GraphViewer = ({ notebooks = [], topics = [], resources = [] }) => {
               color: highlighted ? '#000' : (data.color || '#999'),
               label: data.label || '',
               type: 'circle',
-              zIndex: highlighted ? 1 : 0
+              zIndex: highlighted ? 1 : 0,
+              dragEnabled: true // Enable dragging for nodes
             };
           },
-          // Edge reducer
           edgeReducer: (edge, data) => {
             if (!edge || !data) {
               return {
@@ -139,9 +151,9 @@ const GraphViewer = ({ notebooks = [], topics = [], resources = [] }) => {
             try {
               const source = graph.hasNode(edge.source) ? graph.getNodeAttributes(edge.source) : null;
               const target = graph.hasNode(edge.target) ? graph.getNodeAttributes(edge.target) : null;
-              
+
               const highlighted = (source?.highlighted || target?.highlighted) || false;
-              
+
               return {
                 ...data,
                 size: data.size || 1,
@@ -159,12 +171,43 @@ const GraphViewer = ({ notebooks = [], topics = [], resources = [] }) => {
           }
         });
 
-        // Add interactions
+        // Add dragging interactions
+        rendererRef.current.on('downNode', (e) => {
+          isDraggingRef.current = true;
+          draggedNodeRef.current = e.node;
+          e.preventSigmaDefault();
+        });
+
+        rendererRef.current.getMouseCaptor().on('mousemove', (e) => {
+          if (!isDraggingRef.current || !draggedNodeRef.current) return;
+
+          const pos = rendererRef.current.viewportToGraph(e);
+
+          graph.setNodeAttribute(draggedNodeRef.current, 'x', pos.x);
+          graph.setNodeAttribute(draggedNodeRef.current, 'y', pos.y);
+
+          e.preventSigmaDefault();
+          e.original.preventDefault();
+          e.original.stopPropagation();
+        });
+
+        rendererRef.current.getMouseCaptor().on('mouseup', () => {
+          isDraggingRef.current = false;
+          draggedNodeRef.current = null;
+        });
+
+        rendererRef.current.getMouseCaptor().on('mouseout', () => {
+          isDraggingRef.current = false;
+          draggedNodeRef.current = null;
+        });
+
         rendererRef.current.on('enterNode', (event) => {
-          const node = event.node;
-          if (graph.hasNode(node)) {
-            graph.setNodeAttribute(node, 'highlighted', true);
-            rendererRef.current.refresh();
+          if (!isDraggingRef.current) {
+            const node = event.node;
+            if (graph.hasNode(node)) {
+              graph.setNodeAttribute(node, 'highlighted', true);
+              rendererRef.current.refresh();
+            }
           }
         });
 
@@ -179,9 +222,9 @@ const GraphViewer = ({ notebooks = [], topics = [], resources = [] }) => {
         rendererRef.current.on('clickNode', (event) => {
           const node = event.node;
           const attrs = graph.getNodeAttributes(node);
-          
+
           if (attrs?.type) {
-            switch(attrs.type) {
+            switch (attrs.type) {
               case 'notebook':
                 navigate(`/dashboard/notebook/${node}`);
                 break;
@@ -207,10 +250,10 @@ const GraphViewer = ({ notebooks = [], topics = [], resources = [] }) => {
   }, [notebooks, topics, resources, navigate]);
 
   return (
-    <div 
-      ref={containerRef} 
+    <div
+      ref={containerRef}
       className="w-full h-full rounded-xl shadow-sm"
-      style={{ 
+      style={{
         background: 'linear-gradient(135deg, #7D4FFF20 0%, #7D4FFF10 100%)',
       }}
     >
