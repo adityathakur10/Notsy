@@ -9,6 +9,8 @@ const GraphViewer = ({ notebooks = [], topics = [], resources = [] }) => {
   const graphRef = useRef(null);
   const rendererRef = useRef(null);
   const navigate = useNavigate();
+  const isDraggingRef = useRef(false);
+  const draggedNodeRef = useRef(null);
 
   useEffect(() => {
     if (!notebooks.length && !topics.length && !resources.length) {
@@ -17,13 +19,14 @@ const GraphViewer = ({ notebooks = [], topics = [], resources = [] }) => {
 
     try {
       const graph = new Graph();
+      graphRef.current = graph;
 
       // Add notebook nodes first
       notebooks.forEach(notebook => {
         if (notebook?._id && notebook?.name) {
           graph.addNode(notebook._id, {
             label: notebook.name,
-            size: 15,
+            size: 12,
             color: '#7D4FFF',
             type: 'notebook',
             x: Math.random() * 100 - 50,
@@ -37,8 +40,8 @@ const GraphViewer = ({ notebooks = [], topics = [], resources = [] }) => {
         if (topic?._id && topic?.title && topic?.folderId) {
           graph.addNode(topic._id, {
             label: topic.title,
-            size: 10,
-            color: '#6a43d9',
+            size: 8,
+            color: '#78E9D2',
             type: 'topic',
             x: Math.random() * 100 - 50,
             y: Math.random() * 100 - 50
@@ -48,8 +51,8 @@ const GraphViewer = ({ notebooks = [], topics = [], resources = [] }) => {
           if (graph.hasNode(topic.folderId)) {
             graph.addEdge(topic.folderId, topic._id, {
               type: 'topic-notebook',
-              size: 2,
-              color: '#ddd'
+              size: 3,
+              color: '#7D4FFF'
             });
           }
         }
@@ -58,6 +61,7 @@ const GraphViewer = ({ notebooks = [], topics = [], resources = [] }) => {
       // Add resource nodes and edges
       resources.forEach(resource => {
         if (resource?._id && resource?.topicId) {
+          // Add resource node
           graph.addNode(resource._id, {
             label: resource.title || 'Resource',
             size: 5,
@@ -67,27 +71,55 @@ const GraphViewer = ({ notebooks = [], topics = [], resources = [] }) => {
             y: Math.random() * 100 - 50
           });
 
-          // Only add edge if both nodes exist
+          // Only add edge if topic node exists
           if (graph.hasNode(resource.topicId)) {
-            graph.addEdge(resource.topicId, resource._id, {
-              type: 'resource-topic',
-              size: 1,
-              color: '#eee'
+            try {
+              const edgeId = `${resource.topicId}-${resource._id}`;
+              
+              // Add edge with specific properties
+              graph.addEdge(resource.topicId, resource._id, {
+                type: 'resource-topic',
+                size: 2, // Make edges thicker
+                color: '#FF4F5B', // Match resource color
+                label: 'has-resource',
+                weight: 1,
+                forceAtlas2: true // Enable force-directed layout for this edge
+              });
+
+              console.log('Added edge:', {
+                from: resource.topicId,
+                to: resource._id,
+                edgeId: edgeId
+              });
+            } catch (error) {
+              console.error('Error adding edge:', error, {
+                topicId: resource.topicId,
+                resourceId: resource._id
+              });
+            }
+          } else {
+            console.warn('Topic node not found for resource:', {
+              resourceId: resource._id,
+              topicId: resource.topicId,
+              availableNodes: graph.nodes()
             });
           }
         }
       });
 
-      // Apply layout
+      // After adding nodes and edges, adjust the layout settings
       const sensibleSettings = forceAtlas2.inferSettings(graph);
       forceAtlas2.assign(graph, {
-        iterations: 100,
+        iterations: 500, // Increase iterations for better layout
         settings: {
           ...sensibleSettings,
-          gravity: 2,
-          scalingRatio: 10,
-          strongGravityMode: true,
-          slowDown: 1
+          gravity: 1, // Reduce gravity to allow more spread
+          scalingRatio: 40, // Increase scaling for better edge visibility
+          strongGravityMode: false, // Disable strong gravity for better clustering
+          slowDown: 2, // Slow down the layout for more stability
+          adjustSizes: true, // Adjust node sizes
+          linLogMode: true, // Better for clustered graphs
+          outboundAttractionDistribution: true // Better edge distribution
         }
       });
 
@@ -105,6 +137,7 @@ const GraphViewer = ({ notebooks = [], topics = [], resources = [] }) => {
           labelWeight: 'bold',
           defaultNodeType: 'circle',
           defaultEdgeType: 'line',
+          allowDrag: true, // Enable dragging
           // Node reducer
           nodeReducer: (_, data) => {
             if (!data) {
@@ -112,7 +145,8 @@ const GraphViewer = ({ notebooks = [], topics = [], resources = [] }) => {
                 size: 5,
                 color: '#999',
                 label: '',
-                type: 'circle'
+                type: 'circle',
+                dragEnabled: true // Enable dragging for nodes
               };
             }
 
@@ -123,7 +157,8 @@ const GraphViewer = ({ notebooks = [], topics = [], resources = [] }) => {
               color: highlighted ? '#000' : (data.color || '#999'),
               label: data.label || '',
               type: 'circle',
-              zIndex: highlighted ? 1 : 0
+              zIndex: highlighted ? 1 : 0,
+              dragEnabled: true // Enable dragging for nodes
             };
           },
           // Edge reducer
@@ -159,12 +194,50 @@ const GraphViewer = ({ notebooks = [], topics = [], resources = [] }) => {
           }
         });
 
+        // Add dragging interactions
+        rendererRef.current.on('downNode', (e) => {
+          isDraggingRef.current = true;
+          draggedNodeRef.current = e.node;
+          // Prevent click event when starting drag
+          e.preventSigmaDefault();
+        });
+
+        rendererRef.current.getMouseCaptor().on('mousemove', (e) => {
+          if (!isDraggingRef.current || !draggedNodeRef.current) return;
+
+          // Get new position from mouse
+          const pos = rendererRef.current.viewportToGraph(e);
+
+          // Update node position
+          graph.setNodeAttribute(draggedNodeRef.current, 'x', pos.x);
+          graph.setNodeAttribute(draggedNodeRef.current, 'y', pos.y);
+
+          // Prevent other events
+          e.preventSigmaDefault();
+          e.original.preventDefault();
+          e.original.stopPropagation();
+        });
+
+        // Handle mouse up to stop dragging
+        rendererRef.current.getMouseCaptor().on('mouseup', () => {
+          isDraggingRef.current = false;
+          draggedNodeRef.current = null;
+        });
+
+        // Handle mouse leave to stop dragging
+        rendererRef.current.getMouseCaptor().on('mouseout', () => {
+          isDraggingRef.current = false;
+          draggedNodeRef.current = null;
+        });
+
         // Add interactions
         rendererRef.current.on('enterNode', (event) => {
-          const node = event.node;
-          if (graph.hasNode(node)) {
-            graph.setNodeAttribute(node, 'highlighted', true);
-            rendererRef.current.refresh();
+          if (!isDraggingRef.current) { // Only highlight if not dragging
+            const node = event.node;
+            if (graph.hasNode(node)) {
+              graph.setNodeAttribute(node, 'highlighted', true);
+              rendererRef.current.refresh();
+            }
           }
         });
 

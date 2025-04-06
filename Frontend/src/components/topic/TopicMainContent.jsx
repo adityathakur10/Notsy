@@ -74,31 +74,33 @@ const TopicMainContent = ({ topic, resources, loading, onResourcesUpdate }) => {
 
   const handleVideoSubmit = async (urls) => {
     try {
+      // Start loading toast
       toast.loading("Processing videos...", { id: "uploadToast" });
-      console.log('Sending URLs to backend:', urls);
-      
+
       const response = await axios.post("/upload/uploadUrl", {
-        urls: urls, // Make sure we're sending the entire array
+        urls,
         topicId
       });
 
-      console.log('Upload response:', response.data);
-
+      // Check for successful response based on backend format from video.json
       if (response.data.data && response.data.message) {
+        // Update success toast with processing results
         toast.success(response.data.message, { id: "uploadToast" });
         
+        // Update resources list first
         if (onResourcesUpdate) {
           await onResourcesUpdate();
         }
 
-        // Navigate to the resource viewer
+        // Small delay before navigation to ensure toast and updates are visible
         setTimeout(() => {
           navigate(`/dashboard/resource/${response.data.data._id}`);
         }, 1000);
       }
     } catch (error) {
-      console.error("Error uploading videos:", error.response?.data || error);
-      toast.error(error.response?.data?.msg || "Failed to upload videos", { id: "uploadToast" });
+      console.error("Error uploading videos:", error);
+      const errorMsg = error.response?.data?.msg || "Failed to upload videos";
+      toast.error(errorMsg, { id: "uploadToast" });
     }
   };
 

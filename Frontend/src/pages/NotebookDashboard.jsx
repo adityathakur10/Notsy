@@ -43,13 +43,20 @@ const NotebookDashboard = () => {
     try {
       setAddingTopic(true);
       
-      // Create proper FormData
+      // Create proper FormData object
       const topicFormData = new FormData();
-      topicFormData.append('topic', formData.get('title')); // Change 'title' to 'topic'
-      topicFormData.append('folderId', notebookId);
-      
-      if (formData.get('coverImage')) {
-        topicFormData.append('coverImage', formData.get('coverImage'));
+      topicFormData.append('topic', formData.get('title')); // Topic name
+      topicFormData.append('folderId', notebookId); // Parent notebook ID
+
+      // Only append coverImage if it exists
+      const coverImage = formData.get('coverImage');
+      if (coverImage) {
+        topicFormData.append('coverImage', coverImage);
+      }
+
+      // Log FormData contents for debugging
+      for (let pair of topicFormData.entries()) {
+        console.log(pair[0], pair[1]);
       }
 
       const response = await axios.post("/topic", topicFormData, {
@@ -58,13 +65,13 @@ const NotebookDashboard = () => {
         }
       });
 
-      if (response.data.newTopic) { // Change response.data.topic to response.data.newTopic
+      if (response.data.newTopic) {
         setTopics(prev => [...prev, response.data.newTopic]);
         toast.success("Topic created successfully");
         setIsModalOpen(false);
       }
     } catch (error) {
-      console.error("Error creating topic:", error);
+      console.error("Error creating topic:", error.response?.data || error);
       toast.error(error.response?.data?.msg || "Failed to create topic");
     } finally {
       setAddingTopic(false);
