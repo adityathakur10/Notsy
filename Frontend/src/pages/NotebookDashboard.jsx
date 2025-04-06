@@ -17,14 +17,31 @@ const NotebookDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [addingTopic, setAddingTopic] = useState(false);
+  const [resources, setResources] = useState([]);
 
   useEffect(() => {
     const fetchNotebookData = async () => {
       try {
         setLoading(true);
+        // Fetch notebook and topics
         const response = await axios.get(`/folder/${notebookId}`);
         setNotebook(response.data.folder);
-        setTopics(response.data.topics || []);
+
+        // Get topics
+        const topicsData = response.data.topics || [];
+        setTopics(topicsData);
+
+        // Fetch resources for all topics
+        const resourcePromises = topicsData.map(topic =>
+          axios.get(`/topic/${topic._id}`)
+        );
+
+        const resourceResponses = await Promise.all(resourcePromises);
+        const allResources = resourceResponses.reduce((acc, response) => {
+          return [...acc, ...(response.data.resources || [])];
+        }, []);
+
+        setResources(allResources);
       } catch (error) {
         console.error('Error fetching notebook data:', error);
         toast.error('Failed to load notebook data');
@@ -112,6 +129,7 @@ const NotebookDashboard = () => {
               <MainContent
                 notebook={notebook}
                 topics={topics}
+                resources={resources}
                 loading={loading}
                 onAddTopic={() => setIsModalOpen(true)}
                 onDeleteTopic={handleDeleteTopic}

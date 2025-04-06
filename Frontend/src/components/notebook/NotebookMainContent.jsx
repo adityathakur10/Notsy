@@ -3,10 +3,12 @@ import { useNavigate } from "react-router-dom";
 import { assets } from "../../assets/assets";
 import { TrashIcon } from "@heroicons/react/24/outline";
 import { toast } from "react-hot-toast";
+import GraphViewer from "../graph/GraphViewer";
 
 const NotebookMainContent = ({
   notebook,
   topics,
+  resources, // Add this prop
   loading,
   onAddTopic,
   onDeleteTopic,
@@ -79,7 +81,14 @@ const NotebookMainContent = ({
           </div>
         </div>
 
-        <div className="w-[60%] h-full rounded-xl bg-base-black"></div>
+        {/* Graph Section */}
+        <div className="w-[60%] h-full rounded-xl bg-white/5">
+          <GraphViewer
+            notebooks={notebook ? [notebook] : []}
+            topics={topics || []}
+            resources={resources || []} // Use the resources prop directly
+          />
+        </div>
       </div>
 
       {/* Topics Grid - Scrollable */}
