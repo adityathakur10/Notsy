@@ -20,24 +20,18 @@ const dummyChat=async(req,res)=>{
 }
 
 const chat = async (req, res) => {
-    
     try {
-        // const { query, topicId, resourceId, tempt } = req.body;
-        const { query,topicId, resourceId} = req.body;
+        const { query, topicId, resourceId } = req.body;
 
         if (!query || !topicId || !resourceId) {
             throw new BadRequestError('Please provide a query, topicId, and resourceId');
         }
 
         const userId = req.user.userId;
-        //remove
-        // return res.status(StatusCodes.OK).json({
-        //     message: 'Query processed successfully',
-        //     chat: newChat // Include the new chat document in the response
-        // });
 
-        // 1. Get the chat history by resourceId
-        const existingChat = await Chat.findOne({ resourceId: resourceId }).sort({ createdAt: -1 });
+        // 1. Get existing chat history
+        const existingChat = await Chat.findOne({ resourceId }).sort({ createdAt: -1 });
+
         let chatHistory = [];
         let parentChatId = null;
 
@@ -46,50 +40,61 @@ const chat = async (req, res) => {
             parentChatId = existingChat._id;
         }
 
-        const apiEndpoint = 'http://127.0.0.1:8000/respond/'; // Replace with your Python API endpoint
-
-        // 2. Send the query and chat history to the API
-        const apiResponse = await axios.post(apiEndpoint, {
+        // 2. Call Python API
+        const apiResponse = await axios.post('http://127.0.0.1:8000/respond/', {
             user_query: query,
             messages: chatHistory,
-            topicId: topicId,
-            summary: existingChat ? existingChat.summary : [],
-            resourceId: resourceId,
-            // tempt
-        }, {
-            timeout: 60000 // Timeout in milliseconds (60 seconds)
-        });
+            topicId,
+            summary: existingChat?.summary || [],
+            resourceId,
+            userId:userId
+        }, { timeout: 60000 });
 
-        // 3. Extract the assistant's response from the API response
-        const assistantResponse = apiResponse.data.response;
+        console.log('Python API Response:', apiResponse.data);
 
-        // 4. Create new messages for user and assistant
-        const userMessage = { role: 'user', content: query };
-        const assistantMessage = { role: 'assistant', content: assistantResponse };
+        const assistantResponse = apiResponse.data?.message;
+        if (!assistantResponse?.trim()) {
+            throw new Error('Invalid response format from Python API');
+        }
 
-        // 5. Create a new chat document
+        // 3. Create message objects
+        const messages = [
+            {
+                role: 'user',
+                content: query.trim()
+            },
+            {
+                role: 'assistant',
+                content: assistantResponse.trim()
+            }
+        ];
+
+        // 4. Create new chat document
         const newChat = await Chat.create({
-            topicId: topicId,
-            resourceId: resourceId,
-            parentChatId: parentChatId || null,
-            userId: userId,
-            tempt: tempt,
-            messages: [userMessage, assistantMessage]
+            topicId,
+            resourceId,
+            parentChatId,
+            userId,
+            messages,
+            summary: apiResponse.data.summary || []
         });
 
         return res.status(StatusCodes.OK).json({
-            message: 'Query processed successfully',
-            chat: newChat // Include the new chat document in the response
+            message: 'Chat processed successfully',
+            chat: newChat
         });
 
     } catch (error) {
-        console.error('Error in chat function:', error);
+        console.error('Chat Error:', error);
         return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
-            msg: 'Internal server error',
-            error: error.message
+            message: 'Chat processing failed',
+            error: error.message,
+            ...(process.env.NODE_ENV === 'development' && { stack: error.stack })
         });
     }
 };
+
+
 
 module.exports = {
     chat,
