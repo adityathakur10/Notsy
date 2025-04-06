@@ -93,10 +93,35 @@ const chat = async (req, res) => {
         });
     }
 };
+const getChatById=async(req,res)=>{
+    const resourceId=req.params.resourceId;
 
+    try {
+        const chat=await topicModels.Chat.findById(resourceId);
+        if(!chat){
+            throw new NotFoundError('Chat not found');
+        }
+        return res.status(StatusCodes.OK).json({
+            msg:'Chat fetched successfully',
+            chat
+        });
 
-
+    } catch (error) {
+        if(error instanceof NotFoundError){
+            return res.status(StatusCodes.NOT_FOUND).json({
+                msg:error.message
+            });
+        }else{
+            console.error('Error in getChatById function:', error);
+            return res.status(StatusCodes.INTERNAL_SERVER_ERROR).json({
+                msg: 'Internal server error',
+                error: error.message
+            });
+        }   
+    }
+}
 module.exports = {
     chat,
-    dummyChat
+    dummyChat,
+    getChatById
 };
